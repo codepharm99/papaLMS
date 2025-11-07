@@ -1,36 +1,275 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+# LMSFE Next — демо‑LMS на Next.js 16 (App Router, TS)
 
-First, run the development server:
+Этот репозиторий — учебный демо‑проект LMS (каталог → курс → материалы/объявления) на **Next.js 16 + App Router + TypeScript + Tailwind**. Проект использует минимальные **моки API в памяти** (без БД) и cookie‑авторизацию заглушкой. Цель — быстро показать базовый UX и архитектурные приёмы для будущего расширения (задания/сдачи, оценки, посещаемость).
+
+---
+
+## ⚙️ Требования
+
+- Node.js **18+**
+- npm / pnpm / bun (любой менеджер пакетов)
+- Git (для коммитов)
+- Браузер (Chrome/Firefox)
+
+---
+
+## 🚀 Быстрый старт
 
 ```bash
+# установка зависимостей
+npm i
+
+# запуск дев-сервера
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Local:   http://localhost:3000
+
+# (если меняли конфиги/роуты и видите странные ошибки)
+rm -rf .next && npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Демо‑аккаунты для логина:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **student1 / 1111** — роль `STUDENT`
+- **teacher1 / 1111** — роль `TEACHER`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🧱 Технологии
 
-To learn more about Next.js, take a look at the following resources:
+- **Next.js 16** (App Router, Turbopack)
+- **TypeScript**
+- **Tailwind CSS**
+- Минимальные UI‑компоненты (без тяжёлых библиотек)
+- In‑memory mock API в `src/lib/mockdb.ts`
+- Cookie‑авторизация (заглушка) через `app/api/auth/*`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🗂️ Структура проекта (ключевые файлы)
 
-## Deploy on Vercel
+```
+src/
+  app/
+    layout.tsx                      # root layout (<html>/<body> + <Nav />)
+    page.tsx                        # redirect → /catalog
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+    login/page.tsx                  # форма входа (student1 / teacher1)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+    catalog/page.tsx                # каталог курсов (поиск, "Мои курсы", карточки)
+
+    course/[id]/page.tsx            # страница курса (Обзор / Материалы / Объявления)
+
+    api/
+      auth/
+        login/route.ts              # POST /api/auth/login (ставит cookie)
+        me/route.ts                 # GET  /api/auth/me (текущий пользователь)
+      courses/
+        route.ts                    # GET  /api/courses?q=&mine=1
+        [id]/route.ts               # GET  /api/courses/:id (детали курса)
+        [id]/enroll/route.ts        # POST /api/courses/:id/enroll (только STUDENT)
+        [id]/materials/route.ts     # GET/POST материалы (POST только teacher курса)
+        [id]/announcements/route.ts # GET/POST объявления (POST только teacher курса)
+
+  components/
+    Nav.tsx
+    CourseCard.tsx
+    CourseHeader.tsx
+    Materials.tsx
+    Announcements.tsx
+
+  lib/
+    mockdb.ts                       # пользователи, курсы, материалы, объявления + функции
+    auth.ts                         # cookies() → currentUser() (async)
+```
+
+---
+
+## 🔌 Конфиги: алиасы и корень Turbopack
+
+**`tsconfig.json` (рекомендуется):**
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
+  }
+}
+```
+> Не включайте `.next/**` в `include` — это типы билдера, они не нужны редактору.
+
+**`next.config.mjs` (ESM + фикс корня Turbopack):**
+```js
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/** @type {import('next').NextConfig} */
+export default {
+  turbopack: { root: __dirname },
+};
+```
+Также убедитесь, что в **домашней директории нет случайного `~/package-lock.json`** — иначе Next может «угадать» корень воркспейса неверно.
+
+---
+
+## 👤 Авторизация (заглушка)
+
+- `POST /api/auth/login` — по логину/паролю ищем пользователя в моках, ставим cookie‑токен (id пользователя).
+- `GET /api/auth/me` — возвращает `{ id, name, role }` из cookie.
+- `src/lib/auth.ts`:
+  - **Важно (Next 16):** `cookies()` теперь **async** ⇒ используем `const store = await cookies()`.
+  - Хелпер `currentUser()` **async** и везде вызывается через `await`.
+
+---
+
+## 📚 Данные и моки (`src/lib/mockdb.ts`)
+
+- **Пользователи**: два пользователя (student1, teacher1) с ролями `STUDENT` и `TEACHER`.
+- **Курсы**: несколько демо‑курсов, у курса есть `teacherId` и множество `students`.
+- **Материалы**: по курсу — массив материалов с `title/description/url/createdAt`.
+- **Объявления**: по курсу — массив объявлений `title/body/createdAt`.
+- Основные функции:
+  - `findUserByCreds(username, password)`
+  - `getUserById(id)`
+  - `listCourses({ me, q, mine })` — выдаёт свод без тяжёлых полей, `isEnrolled`/`enrolledCount`.
+  - `toggleEnroll(courseId, user)` — зачисление/отписка студента.
+  - `getCourseView(courseId, me)` — сводные данные по курсу (teacherName, enrolledCount…)
+  - `listMaterials(courseId)` / `addMaterial(courseId, props, me)`
+  - `listAnnouncements(courseId)` / `addAnnouncement(courseId, props, me)`
+
+---
+
+## 🌐 REST API (схемы и примеры)
+
+### Auth
+- `POST /api/auth/login`
+  ```json
+  { "username": "student1", "password": "1111" }
+  ```
+  **Ответ** `200`:
+  ```json
+  { "ok": true, "user": { "id": "u1", "name": "Студент One", "role": "STUDENT" } }
+  ```
+  Ставит cookie‑токен.
+
+- `GET /api/auth/me` → `{ user: null | { id, name, role } }`
+
+### Courses
+- `GET /api/courses?q=&mine=1` → `{ items: CourseVM[] }`
+
+  Поля `CourseVM`: `id, code, title, orgTag, teacherId, enrolledCount, isEnrolled`.
+
+- `GET /api/courses/:id` → `{ item: CourseDetail }`
+
+  Поля `CourseDetail`: `CourseVM + teacherName`.
+
+- `POST /api/courses/:id/enroll` → `{ item: CourseVM }`  
+  **403** если `role !== "STUDENT"`.
+
+### Materials
+- `GET /api/courses/:id/materials` → `{ items: Material[] }`
+- `POST /api/courses/:id/materials` (только **teacher** курса)
+  ```json
+  { "title": "Лекция 2", "url": "https://...", "description": "опционально" }
+  ```
+
+### Announcements
+- `GET /api/courses/:id/announcements` → `{ items: Announcement[] }`
+- `POST /api/courses/:id/announcements` (только **teacher** курса)
+  ```json
+  { "title": "Дедлайн перенесён", "body": "Новая дата — ..." }
+  ```
+
+---
+
+## 🖥️ UI и роли
+
+### Навигация
+- `<Nav />` — бренд, «Каталог», «Мои курсы», индикатор пользователя, «Выйти» (переход на `/login`).
+
+### Каталог (`/catalog`)
+- Поиск по названию/коду/тегу орг‑единицы.
+- Чекбокс «Мои курсы» — фильтр только по зачисленным.
+- `<CourseCard />`
+  - Показ `Зачислено: N`
+  - Кнопка `Записаться/Отписаться` (только **для студента**; для учителя скрыта)
+  - Ссылка в `/course/[id]`
+
+### Страница курса (`/course/[id]`)
+- `<CourseHeader />` — свод курса, счётчик зачисленных, **без** кнопки для учителя.
+- Табы:
+  - **Обзор** — плейсхолдер; сюда можно добавить краткое описание/виджеты.
+  - **Материалы** — список; **teacher** курса видит форму «Добавить материал».
+  - **Объявления** — список; **teacher** курса видит форму «Новое объявление».
+
+---
+
+## ✅ Smoke‑тест (что должно работать)
+
+1. Войти под `student1/1111` → открыть `/catalog`:
+   - поиск, переключатель «Мои курсы»;
+   - запись/отписка (optimistic UI), счётчик меняется.
+2. Перейти в любой курс (например, `c2`) → «Материалы»:
+   - список материалов виден.
+3. Выйти → войти под `teacher1/1111` → открыть тот же курс:
+   - вкладка «Материалы» — видна форма добавления, после сабмита элемент появляется сверху;
+   - вкладка «Объявления» — можно опубликовать объявление;
+   - кнопки «Записаться» нигде нет (и сервер вернёт 403 на enroll).
+
+---
+
+## 🧩 Типичные проблемы и как чинить
+
+- **Warning: inferred workspace root** — лишний `~/package-lock.json`. Удалите его **и/или** зафиксируйте корень в `next.config.mjs` (`turbopack.root = __dirname`).
+- **`Module not found: "@/..."`** — проверьте `tsconfig.json`:
+  - `baseUrl: "."`, `paths: { "@/*": ["src/*"] }`
+- **`Missing <html> and <body> tags in the root layout`** — убедитесь, что `src/app/layout.tsx` возвращает `<html><body>...`.
+- **`cookies().get is not a function` / Sync Dynamic APIs** — в Next 16 `cookies()` асинхронный:
+  ```ts
+  export async function currentUser() {
+    const store = await cookies();
+    return getUserById(store.get("token")?.value ?? null);
+  }
+  ```
+- **Динамические роуты (типизация)** — сигнатура хендлеров:
+  ```ts
+  export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+    const { id } = await ctx.params;
+    ...
+  }
+  ```
+- **Статический маршрут «перебивает» динамический** — не должно быть `api/courses/enroll/route.ts`, только `api/courses/[id]/enroll/route.ts`.
+- **Редактор подсвечивает .next/dev/types** — уберите `.next/**` из `tsconfig.json::include`.
+
+---
+
+## 📜 Скрипты
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  }
+}
+```
+
+---
+
+## 🗺️ Roadmap (дальше по плану)
+
+- **Задания/Сдачи**: CRUD заданий (teacher), сдачи (student), таблица сдач (teacher).
+- **Оценки**: ведомость (teacher) + «Мои оценки» (student), оптимистичный PATCH.
+- **Посещаемость**: создание сессий, отметки присутствия, свод для студента.
+- Состояния: `loading/empty/error/skeleton` везде.
+- Уведомления/тосты, валидация форм (zod + react-hook-form).
+- Сохранение мок‑данных в `localStorage` для устойчивости между перезапусками dev.
+
+---
+
+## 🤝 Вклад
+
+PR и идеи приветствуются. Основная цель — учебный каркас и практические паттерны для LMS‑функционала в Next.js 16.
