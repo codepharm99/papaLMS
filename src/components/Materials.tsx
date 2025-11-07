@@ -1,36 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useCurrentUser } from "@/components/user-context";
 
 type Material = { id: string; title: string; description?: string; url?: string; createdAt: number };
-type Me = { id: string; name: string; role: "STUDENT" | "TEACHER" } | null;
 
 export default function Materials({ courseId, teacherId }: { courseId: string; teacherId: string }) {
   const [items, setItems] = useState<Material[]>([]);
-  const [me, setMe] = useState<Me>(null);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
+  const { user: me } = useCurrentUser();
 
   const canAdd = me?.role === "TEACHER" && me.id === teacherId;
 
-  async function load() {
+  const load = useCallback(async () => {
     const r = await fetch(`/api/courses/${courseId}/materials`);
     if (r.ok) {
       const d = await r.json();
       setItems(d.items);
     }
-  }
+  }, [courseId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-    (async () => {
-      const r = await fetch("/api/auth/me");
-      const d = await r.json();
-      setMe(d.user);
-    })();
-  }, [courseId]);
+  }, [load]);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();

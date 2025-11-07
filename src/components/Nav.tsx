@@ -2,12 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { GraduationCap, LogOut } from "lucide-react";
-
-type Role = "STUDENT" | "TEACHER";
-type NavProps = {
-  user?: { name: string; role: Role };
-};
+import { Fish, LogOut } from "lucide-react";
+import { useCurrentUser } from "@/components/user-context";
 
 function NavLink({
   href,
@@ -34,9 +30,15 @@ function NavLink({
   );
 }
 
-export default function Nav({ user }: NavProps) {
+export default function Nav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useCurrentUser();
+
+  const roleLabels: Record<"STUDENT" | "TEACHER", string> = {
+    STUDENT: "Студент",
+    TEACHER: "Преподаватель",
+  };
 
   const isCatalog = pathname.startsWith("/catalog");
   const isMy = pathname.startsWith("/my") || pathname.startsWith("/catalog?mine");
@@ -46,9 +48,9 @@ export default function Nav({ user }: NavProps) {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
         {/* Brand */}
         <div className="flex items-center gap-2">
-          <GraduationCap className="h-5 w-5 text-gray-900" aria-hidden="true" />
+          <Fish className="h-10 w-10 text-gray-900" aria-hidden="true" />
           <Link href="/catalog" className="font-semibold tracking-tight">
-            LMS
+            papaLMS
           </Link>
         </div>
 
@@ -66,7 +68,7 @@ export default function Nav({ user }: NavProps) {
         {/* User / Role / Logout */}
         <div className="flex items-center gap-3">
           <span className="hidden text-sm text-gray-600 md:inline">
-            {user?.name ?? "Гость"} · {user?.role ?? "—"}
+            {user?.name ?? "Гость"} · {user ? roleLabels[user.role] : "—"}
           </span>
           <button
             type="button"
@@ -74,7 +76,7 @@ export default function Nav({ user }: NavProps) {
             className="inline-flex items-center gap-1 rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
-            Выйти
+            {user ? "Выйти" : "Войти"}
           </button>
         </div>
       </div>

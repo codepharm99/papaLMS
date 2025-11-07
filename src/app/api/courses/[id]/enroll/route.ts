@@ -7,6 +7,7 @@ export async function POST(_req: NextRequest, context: { params: Promise<{ id: s
 
   const me = await currentUser(); // ← важно
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (me.role !== "STUDENT") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const updated = toggleEnroll(id, me);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });

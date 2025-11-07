@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useCurrentUser } from "@/components/user-context";
 
 type CourseVM = {
   id: string;
@@ -21,8 +22,12 @@ export default function CourseHeader({
   onChanged: (next: CourseVM) => void;
 }) {
   const [isPending, start] = useTransition();
+  const { user } = useCurrentUser();
+  const isTeacher = user?.role === "TEACHER";
 
   const toggle = () => {
+    if (isTeacher) return;
+
     start(async () => {
       onChanged({
         ...course,
@@ -47,15 +52,19 @@ export default function CourseHeader({
       <div className="mt-1 text-sm text-gray-600">Преподаватель: {course.teacherName}</div>
       <div className="mt-3 flex items-center gap-3">
         <span className="text-sm text-gray-600">Зачислено: {course.enrolledCount}</span>
-        <button
-          onClick={toggle}
-          disabled={isPending}
-          className={`rounded-xl px-3 py-2 text-sm ${
-            course.isEnrolled ? "bg-white text-gray-900 border" : "bg-gray-900 text-white"
-          } disabled:opacity-60`}
-        >
-          {course.isEnrolled ? "Отписаться" : "Записаться"}
-        </button>
+        {isTeacher ? (
+          <span className="text-xs text-gray-500">Запись доступна только студентам</span>
+        ) : (
+          <button
+            onClick={toggle}
+            disabled={isPending}
+            className={`rounded-xl px-3 py-2 text-sm ${
+              course.isEnrolled ? "bg-white text-gray-900 border" : "bg-gray-900 text-white"
+            } disabled:opacity-60`}
+          >
+            {course.isEnrolled ? "Отписаться" : "Записаться"}
+          </button>
+        )}
       </div>
     </div>
   );

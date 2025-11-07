@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import CourseCard, { CourseVM } from "@/components/CourseCard";
 
 type Resp = { items: CourseVM[] };
@@ -18,7 +18,7 @@ export default function CatalogPage() {
     return `/api/courses?${p.toString()}`;
   }, [q, mine]);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     const res = await fetch(query);
     setLoading(false);
@@ -28,9 +28,12 @@ export default function CatalogPage() {
     } else {
       setItems([]);
     }
-  }
+  }, [query]);
 
-  useEffect(() => { load(); }, [query]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
 
   return (
     <section className="space-y-4">

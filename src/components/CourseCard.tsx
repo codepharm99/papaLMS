@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
+import { useCurrentUser } from "@/components/user-context";
 
 export type CourseVM = {
   id: string;
@@ -21,8 +22,12 @@ export default function CourseCard({
   onChanged?: (next: CourseVM) => void;
 }) {
   const [isPending, start] = useTransition();
+  const { user } = useCurrentUser();
+  const isTeacher = user?.role === "TEACHER";
 
   const toggle = () => {
+    if (isTeacher) return;
+
     start(async () => {
       // optimistic
       onChanged?.({
@@ -51,15 +56,19 @@ export default function CourseCard({
       </h3>
       <div className="mt-auto flex items-center justify-between">
         <span className="text-sm text-gray-600">Зачислено: {data.enrolledCount}</span>
-        <button
-          onClick={toggle}
-          disabled={isPending}
-          className={`rounded-xl px-3 py-2 text-sm ${
-            data.isEnrolled ? "bg-white text-gray-900 border" : "bg-gray-900 text-white"
-          } disabled:opacity-60`}
-        >
-          {data.isEnrolled ? "Отписаться" : "Записаться"}
-        </button>
+        {isTeacher ? (
+          <span className="text-xs text-gray-500">Запись доступна только студентам</span>
+        ) : (
+          <button
+            onClick={toggle}
+            disabled={isPending}
+            className={`rounded-xl px-3 py-2 text-sm ${
+              data.isEnrolled ? "bg-white text-gray-900 border" : "bg-gray-900 text-white"
+            } disabled:opacity-60`}
+          >
+            {data.isEnrolled ? "Отписаться" : "Записаться"}
+          </button>
+        )}
       </div>
     </div>
   );

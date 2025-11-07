@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
-import { listMaterials, addMaterial } from "@/lib/mockdb";
+import { addMaterial, listMaterials } from "@/lib/mockdb";
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -10,8 +10,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const me = await currentUser(); // ← важно
+  const me = await currentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (me.role !== "TEACHER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
   const r = addMaterial(id, { title: body.title, description: body.description, url: body.url }, me);

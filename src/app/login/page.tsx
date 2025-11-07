@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCurrentUser } from "@/components/user-context";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -9,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("1111");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const { refresh } = useCurrentUser();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,7 +26,8 @@ export default function LoginPage() {
       setErr("Неверный логин или пароль");
       return;
     }
-    const { user } = await res.json();
+    await res.json();
+    await refresh();
     router.push("/catalog");
   }
 
