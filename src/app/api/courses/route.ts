@@ -8,6 +8,6 @@ export async function GET(req: Request) {
   const mine = searchParams.get("mine") === "1";
 
   const me = await currentUser(); // ← важно
-  const data = listCourses({ me, q, mine });
+  const data = await listCourses({ me, q, mine });
   return NextResponse.json({ items: data });
 }

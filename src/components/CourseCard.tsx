@@ -23,10 +23,11 @@ export default function CourseCard({
 }) {
   const [isPending, start] = useTransition();
   const { user } = useCurrentUser();
-  const isTeacher = user?.role === "TEACHER";
+  const isStudent = user?.role === "STUDENT";
+  const restrictEnroll = !!user && !isStudent;
 
   const toggle = () => {
-    if (isTeacher) return;
+    if (restrictEnroll) return;
 
     start(async () => {
       // optimistic
@@ -56,7 +57,7 @@ export default function CourseCard({
       </h3>
       <div className="mt-auto flex items-center justify-between">
         <span className="text-sm text-gray-600">Зачислено: {data.enrolledCount}</span>
-        {isTeacher ? (
+        {restrictEnroll ? (
           <span className="text-xs text-gray-500">Запись доступна только студентам</span>
         ) : (
           <button

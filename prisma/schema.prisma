@@ -4,8 +4,7 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -15,42 +14,62 @@ datasource db {
 
 
 model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  name      String?
-  password  String
-  role      Role      @default(STUDENT)
-  createdAt DateTime  @default(now())
-  courses   Course[]  @relation("TeacherCourses")
-  enrolls   Enrollment[]
+  id              String           @id @default(cuid())
+  username        String           @unique
+  password        String
+  name            String
+  role            Role             @default(STUDENT)
+  createdAt       DateTime         @default(now())
+  courses         Course[]         @relation("TeacherCourses")
+  enrolls         Enrollment[]
+  materials       Material[]       @relation("AuthorMaterials")
+  createdInvites  TeacherInvite[]  @relation("AdminInvites")
+  usedInvites     TeacherInvite[]  @relation("UsedTeacherInvites")
 }
 
 model Course {
-  id          Int          @id @default(autoincrement())
+  id          String        @id @default(cuid())
+  code        String
   title       String
-  description String?
-  teacherId   Int
-  teacher     User         @relation("TeacherCourses", fields: [teacherId], references: [id])
-  lessons     Lesson[]
+  orgTag      String
+  teacherId   String
+  teacher     User          @relation("TeacherCourses", fields: [teacherId], references: [id])
   enrollments Enrollment[]
-}
-
-model Lesson {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String?
-  courseId  Int
-  course    Course   @relation(fields: [courseId], references: [id])
-  createdAt DateTime @default(now())
+  materials   Material[]
 }
 
 model Enrollment {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  courseId  Int
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
   user      User     @relation(fields: [userId], references: [id])
   course    Course   @relation(fields: [courseId], references: [id])
   createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+}
+
+model Material {
+  id          String   @id @default(cuid())
+  courseId    String
+  teacherId   String
+  title       String
+  description String?
+  url         String?
+  createdAt   DateTime @default(now())
+  course      Course   @relation(fields: [courseId], references: [id])
+  teacher     User     @relation("AuthorMaterials", fields: [teacherId], references: [id])
+}
+
+model TeacherInvite {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  createdById String
+  createdBy   User     @relation("AdminInvites", fields: [createdById], references: [id])
+  usedById    String?
+  usedBy      User?    @relation("UsedTeacherInvites", fields: [usedById], references: [id])
+  createdAt   DateTime @default(now())
+  usedAt      DateTime?
 }
 
 enum Role {

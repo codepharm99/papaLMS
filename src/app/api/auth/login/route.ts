@@ -4,7 +4,7 @@ import { setAuthCookie } from "@/lib/auth";
 
 export async function POST(req: Request) {
   const { username, password } = await req.json().catch(() => ({}));
-  const user = findUserByCreds(username, password);
+  const user = await findUserByCreds(username, password);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Неверные данные" }, { status: 401 });
   }

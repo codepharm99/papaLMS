@@ -23,10 +23,11 @@ export default function CourseHeader({
 }) {
   const [isPending, start] = useTransition();
   const { user } = useCurrentUser();
-  const isTeacher = user?.role === "TEACHER";
+  const isStudent = user?.role === "STUDENT";
+  const restrictEnroll = !!user && !isStudent;
 
   const toggle = () => {
-    if (isTeacher) return;
+    if (restrictEnroll) return;
 
     start(async () => {
       onChanged({
@@ -52,7 +53,7 @@ export default function CourseHeader({
       <div className="mt-1 text-sm text-gray-600">Преподаватель: {course.teacherName}</div>
       <div className="mt-3 flex items-center gap-3">
         <span className="text-sm text-gray-600">Зачислено: {course.enrolledCount}</span>
-        {isTeacher ? (
+        {restrictEnroll ? (
           <span className="text-xs text-gray-500">Запись доступна только студентам</span>
         ) : (
           <button

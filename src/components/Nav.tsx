@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Fish, LogOut } from "lucide-react";
 import { useCurrentUser } from "@/components/user-context";
+import type { Role } from "@/lib/mockdb";
 
 function NavLink({
   href,
@@ -35,9 +36,10 @@ export default function Nav() {
   const router = useRouter();
   const { user } = useCurrentUser();
 
-  const roleLabels: Record<"STUDENT" | "TEACHER", string> = {
+  const roleLabels: Record<Role, string> = {
     STUDENT: "Студент",
     TEACHER: "Преподаватель",
+    ADMIN: "Админ",
   };
 
   const isCatalog = pathname.startsWith("/catalog");
@@ -63,12 +65,15 @@ export default function Nav() {
             label="Мои курсы"
             isActive={isMy}
           />
+          {user?.role === "ADMIN" && (
+            <NavLink href="/admin/invites" label="Коды преподавателей" isActive={pathname.startsWith("/admin/invites")} />
+          )}
         </nav>
 
         {/* User / Role / Logout */}
         <div className="flex items-center gap-3">
           <span className="hidden text-sm text-gray-600 md:inline">
-            {user?.name ?? "Гость"} · {user ? roleLabels[user.role] : "—"}
+            {user?.name ?? "Гость"} · {user ? roleLabels[user.role] ?? user.role : "—"}
           </span>
           <button
             type="button"

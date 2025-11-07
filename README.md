@@ -32,6 +32,7 @@ rm -rf .next && npm run dev
 
 - **student1 / 1111** — роль `STUDENT`
 - **teacher1 / 1111** — роль `TEACHER`
+- **admin1 / 1111** — роль `ADMIN` (создание кодов для преподавателей)
 
 ---
 
@@ -54,7 +55,7 @@ src/
     layout.tsx                      # root layout (<html>/<body> + <Nav />)
     page.tsx                        # redirect → /catalog
 
-    login/page.tsx                  # форма входа (student1 / teacher1)
+    login/page.tsx                  # вход + регистрация (student1 / teacher1 / admin1)
 
     catalog/page.tsx                # каталог курсов (поиск, "Мои курсы", карточки)
 
@@ -113,9 +114,10 @@ export default {
 
 ---
 
-## 👤 Авторизация (заглушка)
+## 👤 Авторизация
 
-- `POST /api/auth/login` — по логину/паролю ищем пользователя в моках, ставим cookie‑токен (id пользователя).
+- `POST /api/auth/login` — по логину/паролю ищем пользователя в БД, ставим cookie‑токен (id пользователя).
+- `POST /api/auth/register` — создаёт студента; для регистрации преподавателя требуется код администратора.
 - `GET /api/auth/me` — возвращает `{ id, name, role }` из cookie.
 - `src/lib/auth.ts`:
   - **Важно (Next 16):** `cookies()` теперь **async** ⇒ используем `const store = await cookies()`.
@@ -123,12 +125,12 @@ export default {
 
 ---
 
-## 📚 Данные и моки (`src/lib/mockdb.ts`)
+## 📚 Данные (`src/lib/mockdb.ts`)
 
-- **Пользователи**: два пользователя (student1, teacher1) с ролями `STUDENT` и `TEACHER`.
+- **Пользователи**: базовые аккаунты `student1`, `teacher1`, `admin1` (ADMIN выдаёт коды преподавателям).
 - **Курсы**: несколько демо‑курсов, у курса есть `teacherId` и множество `students`.
 - **Материалы**: по курсу — массив материалов с `title/description/url/createdAt`.
-- **Объявления**: по курсу — массив объявлений `title/body/createdAt`.
+- **Коды преподавателей**: админ генерирует одноразовые коды для регистрации роли `TEACHER`.
 - Основные функции:
   - `findUserByCreds(username, password)`
   - `getUserById(id)`
@@ -136,7 +138,8 @@ export default {
   - `toggleEnroll(courseId, user)` — зачисление/отписка студента.
   - `getCourseView(courseId, me)` — сводные данные по курсу (teacherName, enrolledCount…)
   - `listMaterials(courseId)` / `addMaterial(courseId, props, me)`
-  - `listAnnouncements(courseId)` / `addAnnouncement(courseId, props, me)`
+  - `registerStudent(data)` / `registerTeacher(data)` — регистрация с валидацией кодов
+  - `createTeacherInvite(admin)` / `listTeacherInvites()`
 
 ---
 
@@ -152,6 +155,12 @@ export default {
   { "ok": true, "user": { "id": "u1", "name": "Студент One", "role": "STUDENT" } }
   ```
   Ставит cookie‑токен.
+
+- `POST /api/auth/register`
+  ```json
+  { "username": "student99", "password": "1111", "name": "Новый Студент", "role": "TEACHER", "inviteCode": "ABCD1234" }
+  ```
+  При `role = "TEACHER"` требуется действующий код преподавателя.
 
 - `GET /api/auth/me` → `{ user: null | { id, name, role } }`
 
@@ -180,6 +189,10 @@ export default {
   ```json
   { "title": "Дедлайн перенесён", "body": "Новая дата — ..." }
   ```
+
+### Teacher invites (admin)
+- `GET /api/admin/teacher-invites` → `{ items: Invite[] }`
+- `POST /api/admin/teacher-invites` → `{ invite }`
 
 ---
 
