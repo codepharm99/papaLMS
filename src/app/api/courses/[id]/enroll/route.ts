@@ -5,7 +5,7 @@ import { toggleEnroll } from "@/lib/mockdb";
 export async function POST(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
 
-  const me = currentUser();
+  const me = await currentUser(); // ← важно
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const updated = toggleEnroll(id, me);

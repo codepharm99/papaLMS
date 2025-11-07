@@ -34,7 +34,7 @@ export default function CatalogPage() {
 
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">Каталог курсов</h1>
+      <h1 className="text-2xl font-semibold">Каталог курсов!</h1>
 
       <div className="flex flex-wrap items-center gap-2">
         <input

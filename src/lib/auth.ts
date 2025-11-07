@@ -16,7 +16,8 @@ export function clearAuthCookie(res: NextResponse) {
   res.cookies.set(COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
 }
 
-export function currentUser(): User | null {
-  const token = cookies().get(COOKIE)?.value ?? null;
+export async function currentUser(): Promise<User | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE)?.value ?? null;
   return getUserById(token);
 }

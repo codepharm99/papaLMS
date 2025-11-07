@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from "next/link";
 
 export type CourseVM = {
   id: string;
@@ -45,7 +46,9 @@ export default function CourseCard({
   return (
     <div className="flex flex-col rounded-2xl border bg-white p-4 shadow-sm">
       <div className="mb-2 text-xs text-gray-500">{data.code} · {data.orgTag}</div>
-      <h3 className="mb-3 text-lg font-semibold">{data.title}</h3>
+      <h3 className="mb-3 text-lg font-semibold">
+        <Link href={`/course/${data.id}`} className="hover:underline">{data.title}</Link>
+      </h3>
       <div className="mt-auto flex items-center justify-between">
         <span className="text-sm text-gray-600">Зачислено: {data.enrolledCount}</span>
         <button

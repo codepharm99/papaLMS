@@ -7,7 +7,7 @@ export async function GET(req: Request) {
   const q = searchParams.get("q") ?? "";
   const mine = searchParams.get("mine") === "1";
 
-  const me = currentUser();
+  const me = await currentUser(); // ← важно
   const data = listCourses({ me, q, mine });
   return NextResponse.json({ items: data });
 }
