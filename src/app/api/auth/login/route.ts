@@ -1,33 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { currentUser } from "@/lib/data";
+import { NextResponse } from "next/server";
+import { findUserByCreds } from "@/lib/mockdb";
+import { setAuthCookie } from "@/lib/auth";
 
-const DEMO_PASSWORD = "lms-demo";
-
-export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => ({}));
-  const { email, password } = body;
-
-  if (!email || !password) {
-    return NextResponse.json(
-      { error: "Email and password are required" },
-      { status: 400 }
-    );
+export async function POST(req: Request) {
+  const { username, password } = await req.json().catch(() => ({}));
+  const user = findUserByCreds(username, password);
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "Неверные данные" }, { status: 401 });
   }
-
-  if (email !== currentUser.email || password !== DEMO_PASSWORD) {
-    return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-  }
-
-  return NextResponse.json({
-    token: "demo-token",
-    user: currentUser,
-    expiresIn: 3600,
-  });
-}
-
-export async function GET() {
-  return NextResponse.json({
-    message: "POST email and password to obtain a mock token.",
-    demoCredentials: { email: currentUser.email, password: DEMO_PASSWORD },
-  });
+  const res = NextResponse.json({ ok: true, user: { id: user.id, name: user.name, role: user.role } });
+  setAuthCookie(res, user);
+  return res;
 }

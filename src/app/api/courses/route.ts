@@ -1,17 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { courses } from "@/lib/data";
+import { NextResponse } from "next/server";
+import { currentUser } from "@/lib/auth";
+import { listCourses } from "@/lib/mockdb";
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get("q") ?? "";
+  const mine = searchParams.get("mine") === "1";
 
-  if (id) {
-    const course = courses.find((item) => item.id === id);
-    if (!course) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
-    }
-    return NextResponse.json({ data: course });
-  }
-
-  return NextResponse.json({ data: courses });
+  const me = currentUser();
+  const data = listCourses({ me, q, mine });
+  return NextResponse.json({ items: data });
 }

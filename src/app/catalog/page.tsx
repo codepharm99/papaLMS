@@ -1,84 +1,73 @@
-import Link from "next/link";
-import CourseCard from "@/components/CourseCard";
-import NavBar from "@/components/NavBar";
-import SearchBar from "@/components/SearchBar";
-import Tabs from "@/components/Tabs";
-import { announcements, courses } from "@/lib/data";
+"use client";
 
-export const metadata = {
-  title: "Catalog | Atlas LMS",
-  description: "Browse active courses, see instructors, and catch up on the latest announcements.",
-};
+import { useEffect, useMemo, useState } from "react";
+import CourseCard, { CourseVM } from "@/components/CourseCard";
 
-const categoryTabs = [
-  { id: "all", label: "All tracks" },
-  ...Array.from(new Set(courses.map((course) => course.category))).map(
-    (category) => ({ id: category.toLowerCase(), label: category })
-  ),
-];
+type Resp = { items: CourseVM[] };
 
 export default function CatalogPage() {
+  const [q, setQ] = useState("");
+  const [mine, setMine] = useState(false);
+  const [items, setItems] = useState<CourseVM[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const query = useMemo(() => {
+    const p = new URLSearchParams();
+    if (q.trim()) p.set("q", q.trim());
+    if (mine) p.set("mine", "1");
+    return `/api/courses?${p.toString()}`;
+  }, [q, mine]);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch(query);
+    setLoading(false);
+    if (res.ok) {
+      const data: Resp = await res.json();
+      setItems(data.items);
+    } else {
+      setItems([]);
+    }
+  }
+
+  useEffect(() => { load(); }, [query]);
+
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <NavBar title="Atlas LMS" />
-      <main className="mx-auto flex max-w-6xl flex-col gap-12 px-6 py-12">
-        <section className="space-y-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
-                Course catalog
-              </p>
-              <h1 className="mt-1 text-3xl font-semibold text-zinc-900">
-                Continue building your learning roadmap
-              </h1>
-              <p className="mt-2 max-w-2xl text-base text-zinc-600">
-                Filter by discipline, skim instructor bios, and jump directly into each live cohort or asynchronous module.
-              </p>
-            </div>
-            <SearchBar placeholder="Search by title, tag, or instructor" />
-          </div>
-          <Tabs tabs={categoryTabs} activeId="all" />
-        </section>
+    <section className="space-y-4">
+      <h1 className="text-2xl font-semibold">Каталог курсов</h1>
 
-        <section className="grid gap-6 md:grid-cols-2">
-          {courses.map((course) => (
-            <CourseCard key={course.id} course={course} />
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Поиск по названию или коду..."
+          className="w-full max-w-md rounded-xl border px-3 py-2 outline-none focus:ring"
+        />
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
+          Мои курсы
+        </label>
+      </div>
+
+      {loading && <div className="text-gray-500">Загрузка...</div>}
+
+      {!loading && items && items.length === 0 && (
+        <div className="rounded-2xl border border-dashed p-6 text-gray-500">Ничего не найдено.</div>
+      )}
+
+      {!loading && items && items.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((c, idx) => (
+            <CourseCard
+              key={c.id}
+              data={c}
+              onChanged={(next) =>
+                setItems(prev => prev ? prev.map((x, i) => (i === idx ? next : x)) : prev)
+              }
+            />
           ))}
-        </section>
-
-        <section className="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
-                Latest announcements
-              </p>
-              <h2 className="text-2xl font-semibold text-zinc-900">
-                Stay aligned with faculty updates
-              </h2>
-            </div>
-            <Link href="/login" className="text-sm font-medium text-emerald-600">
-              Manage notifications
-            </Link>
-          </div>
-          <div className="mt-6 space-y-4">
-            {announcements.map((announcement) => (
-              <article
-                key={announcement.id}
-                className="rounded-2xl border border-zinc-100 bg-zinc-50 px-5 py-4"
-              >
-                <div className="flex items-center justify-between text-xs uppercase tracking-wide text-zinc-500">
-                  <span>{announcement.courseId}</span>
-                  <time>{new Date(announcement.date).toLocaleDateString()}</time>
-                </div>
-                <h3 className="mt-1 text-base font-semibold text-zinc-900">
-                  {announcement.title}
-                </h3>
-                <p className="mt-1 text-sm text-zinc-600">{announcement.body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-      </main>
-    </div>
+        </div>
+      )}
+    </section>
   );
 }

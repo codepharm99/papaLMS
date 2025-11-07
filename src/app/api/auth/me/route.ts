@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/data";
+import { currentUser } from "@/lib/auth";
 
 export async function GET() {
-  return NextResponse.json({ data: currentUser });
+  const me = currentUser();
+  if (!me) return NextResponse.json({ user: null });
+  return NextResponse.json({ user: { id: me.id, name: me.name, role: me.role } });
 }
