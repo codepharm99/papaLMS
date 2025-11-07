@@ -31,11 +31,8 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-<<<<<<< HEAD
 
 =======
-.env
->>>>>>> 03d807d (fix(.gitignore): update .env entry to ignore all env files)
 
 # vercel
 .vercel
