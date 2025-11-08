@@ -586,3 +586,57 @@ export async function assignTestToStudent(
     },
   };
 }
+
+export type StudentAssignment = {
+  id: string;
+  test: { id: string; title: string };
+  dueAt?: number | null;
+  status: string;
+};
+
+export async function listAssignmentsForStudent(studentId: string): Promise<StudentAssignment[]> {
+  const rows = await prisma.testAssignment.findMany({
+    where: { studentId },
+    orderBy: { createdAt: "desc" },
+    include: { test: true },
+  });
+  return rows.map(r => ({ id: r.id, test: { id: r.test.id, title: r.test.title }, dueAt: r.dueAt?.getTime() ?? null, status: r.status }));
+}
+
+export async function getAssignmentQuestionsForStudent(
+  student: User,
+  assignmentId: string
+): Promise<{ ok: true; assignment: StudentAssignment; questions: Array<{ id: string; text: string; options?: string[] | null }> } | { error: "FORBIDDEN" | "ASSIGNMENT_NOT_FOUND" }> {
+  if (student.role !== "STUDENT") return { error: "FORBIDDEN" };
+  const a = await prisma.testAssignment.findUnique({ where: { id: assignmentId }, include: { test: true } });
+  if (!a || a.studentId !== student.id) return { error: "ASSIGNMENT_NOT_FOUND" };
+  const qs = await prisma.question.findMany({ where: { testId: a.testId }, orderBy: { createdAt: "asc" } });
+  const questions = qs.map(q => ({ id: q.id, text: q.text, options: (q.options as unknown as string[] | null) ?? null }));
+  const assignment: StudentAssignment = { id: a.id, test: { id: a.test.id, title: a.test.title }, dueAt: a.dueAt?.getTime() ?? null, status: a.status };
+  return { ok: true, assignment, questions };
+}
+
+export async function submitAssignmentAnswers(
+  student: User,
+  assignmentId: string,
+  answers: Record<string, number | string | null>
+): Promise<{ ok: true; score: number; total: number } | { error: "FORBIDDEN" | "ASSIGNMENT_NOT_FOUND" | "ALREADY_SUBMITTED" }> {
+  if (student.role !== "STUDENT") return { error: "FORBIDDEN" };
+  const a = await prisma.testAssignment.findUnique({ where: { id: assignmentId } });
+  if (!a || a.studentId !== student.id) return { error: "ASSIGNMENT_NOT_FOUND" };
+  if (a.status === "COMPLETED") return { error: "ALREADY_SUBMITTED" };
+  const qs = await prisma.question.findMany({ where: { testId: a.testId } });
+  let score = 0;
+  let total = 0;
+  for (const q of qs) {
+    const opts = (q.options as unknown as string[] | null) ?? null;
+    if (opts && typeof q.correctIndex === "number") {
+      total += 1;
+      const chosen = answers[q.id];
+      if (typeof chosen === "number" && chosen === q.correctIndex) score += 1;
+    }
+  }
+  // Persist only status; storing detailed answers would require schema changes.
+  await prisma.testAssignment.update({ where: { id: assignmentId }, data: { status: "COMPLETED" } });
+  return { ok: true, score, total };
+}

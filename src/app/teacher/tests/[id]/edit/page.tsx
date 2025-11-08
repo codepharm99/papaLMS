@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 
 type TestItem = { id: string; title: string; description?: string | null; createdAt: number };
 type QuestionItem = { id: string; testId: string; text: string; options?: string[] | null; correctIndex?: number | null; createdAt: number };
+type StudentItem = { id: string; name: string };
 
 export default function EditTestPage() {
   const params = useParams<{ id: string }>();
@@ -48,6 +49,31 @@ export default function EditTestPage() {
       cancelled = true;
     };
   }, [testId]);
+
+  // Students to assign
+  const [students, setStudents] = useState<StudentItem[]>([]);
+  const [assignStudentId, setAssignStudentId] = useState<string>("");
+  const [assignDueAt, setAssignDueAt] = useState<string>("");
+  const [assignMsg, setAssignMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadStudents() {
+      try {
+        const r = await fetch("/api/teacher/students", { cache: "no-store" });
+        if (!r.ok) return;
+        const j: { data: StudentItem[] } = await r.json();
+        if (!cancelled) {
+          setStudents(j.data ?? []);
+          if (j.data?.length) setAssignStudentId(prev => prev || j.data[0].id);
+        }
+      } catch {}
+    }
+    loadStudents();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const addOption = () => setOptions(prev => [...prev, ""]);
   const removeOption = (idx: number) => {
@@ -148,6 +174,50 @@ export default function EditTestPage() {
                 </Button>
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
+            </form>
+          </section>
+
+          <section className="rounded-xl border bg-white p-4">
+            <h2 className="mb-3 text-lg font-medium">Назначить тестирование студенту</h2>
+            <form
+              onSubmit={async e => {
+                e.preventDefault();
+                setAssignMsg(null);
+                const res = await fetch("/api/teacher/assignments", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ testId, studentId: assignStudentId, dueAt: assignDueAt || null }),
+                });
+                if (res.ok) setAssignMsg("Назначение создано");
+                else {
+                  const j = await res.json().catch(() => ({}));
+                  setAssignMsg(j?.error || "Ошибка назначения");
+                }
+              }}
+              className="grid gap-3 md:max-w-xl"
+            >
+              <label className="grid gap-1">
+                <span className="text-sm text-gray-700">Студент</span>
+                <select
+                  value={assignStudentId}
+                  onChange={e => setAssignStudentId(e.target.value)}
+                  className="rounded-md border px-3 py-2 text-sm"
+                >
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1">
+                <span className="text-sm text-gray-700">Срок (необязательно)</span>
+                <Input type="datetime-local" value={assignDueAt} onChange={e => setAssignDueAt(e.target.value)} />
+              </label>
+              <div className="flex items-center gap-3">
+                <Button type="submit">Назначить</Button>
+                {assignMsg && <span className="text-sm text-gray-600">{assignMsg}</span>}
+              </div>
             </form>
           </section>
 
