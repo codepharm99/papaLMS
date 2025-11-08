@@ -46,10 +46,6 @@ export default function CatalogPage() {
           placeholder="Поиск по названию или коду..."
           className="w-full max-w-md rounded-xl border px-3 py-2 outline-none focus:ring"
         />
-        <label className="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
-          Мои курсы
-        </label>
       </div>
 
       {loading && <div className="text-gray-500">Загрузка...</div>}

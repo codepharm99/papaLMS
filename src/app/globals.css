@@ -122,59 +122,69 @@
 }
 
 html.login-pattern {
-  --s: 100px;
+  /* Brand colors for the login gradient */
   --c1: #c0d5e7;
   --c2: #fff;
-  --_s: calc(2 * var(--s)) calc(2 * var(--s));
-  --_g: var(--_s) conic-gradient(at 40% 40%, #0000 75%, var(--c1) 0);
-  --_p: var(--_s) conic-gradient(at 20% 20%, #0000 75%, var(--c2) 0);
+  /* Keep page background solid; moving layers live in pseudo-elements */
+  background: var(--background);
+  /* Allow pseudo-elements to render behind content reliably */
+  isolation: isolate;
+}
+
+/* GPU-friendly moving gradient layers */
+html.login-pattern:not(.finisher-active)::before,
+html.login-pattern:not(.finisher-active)::after {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  will-change: transform;
+  transform: translateZ(0);
+  z-index: -1;
+}
+
+/* Base conic layer, slow rotation */
+html.login-pattern:not(.finisher-active)::before {
+  /* Big soft light with two spots */
   background:
-    calc(0.9 * var(--s)) calc(0.9 * var(--s)) / var(--_p),
-    calc(-0.1 * var(--s)) calc(-0.1 * var(--s)) / var(--_p),
-    calc(0.7 * var(--s)) calc(0.7 * var(--s)) / var(--_g),
-    calc(-0.3 * var(--s)) calc(-0.3 * var(--s)) / var(--_g),
-    conic-gradient(from 90deg at 20% 20%, var(--c2) 25%, var(--c1) 0) 0 0 / var(--s) var(--s);
-  animation: loginPatternMove 3s infinite;
+    radial-gradient(60% 70% at 25% 35%, var(--c1) 0%, transparent 60%),
+    radial-gradient(55% 65% at 70% 65%, var(--c2) 0%, transparent 65%);
+  opacity: 0.65;
+  animation: loginLights1 16s ease-in-out infinite alternate;
+}
+
+/* Soft radial accents, counter-rotating for subtle parallax */
+html.login-pattern:not(.finisher-active)::after {
+  background:
+    radial-gradient(70% 80% at 30% 70%, var(--c2) 0%, transparent 65%),
+    radial-gradient(65% 75% at 75% 30%, var(--c1) 0%, transparent 60%);
+  opacity: 0.55;
+  animation: loginLights2 20s ease-in-out infinite alternate;
 }
 
 html.login-pattern body {
   background: transparent !important;
 }
 
-@keyframes loginPatternMove {
-  0% {
-    background-position:
-      calc(0.9 * var(--s)) calc(0.9 * var(--s)),
-      calc(-0.1 * var(--s)) calc(-0.1 * var(--s)),
-      calc(0.7 * var(--s)) calc(0.7 * var(--s)),
-      calc(-0.3 * var(--s)) calc(-0.3 * var(--s)), 0 0;
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html.login-pattern {
+    animation: none !important;
   }
-  25% {
-    background-position:
-      calc(1.9 * var(--s)) calc(0.9 * var(--s)),
-      calc(-1.1 * var(--s)) calc(-0.1 * var(--s)),
-      calc(1.7 * var(--s)) calc(0.7 * var(--s)),
-      calc(-1.3 * var(--s)) calc(-0.3 * var(--s)), 0 0;
+  html.login-pattern::before,
+  html.login-pattern::after {
+    animation: none !important;
   }
-  50% {
-    background-position:
-      calc(1.9 * var(--s)) calc(-0.1 * var(--s)),
-      calc(-1.1 * var(--s)) calc(0.9 * var(--s)),
-      calc(1.7 * var(--s)) calc(-0.3 * var(--s)),
-      calc(-1.3 * var(--s)) calc(0.7 * var(--s)), 0 0;
-  }
-  75% {
-    background-position:
-      calc(2.9 * var(--s)) calc(-0.1 * var(--s)),
-      calc(-2.1 * var(--s)) calc(0.9 * var(--s)),
-      calc(2.7 * var(--s)) calc(-0.3 * var(--s)),
-      calc(-2.3 * var(--s)) calc(0.7 * var(--s)), 0 0;
-  }
-  100% {
-    background-position:
-      calc(2.9 * var(--s)) calc(-1.1 * var(--s)),
-      calc(-2.1 * var(--s)) calc(1.9 * var(--s)),
-      calc(2.7 * var(--s)) calc(-1.3 * var(--s)),
-      calc(-2.3 * var(--s)) calc(1.7 * var(--s)), 0 0;
-  }
+}
+
+/* Compositor-only animations: floating lights */
+@keyframes loginLights1 {
+  0% { transform: translate(-12%, -10%) scale(1.1) rotate(0deg); }
+  50% { transform: translate(6%, 8%) scale(1.15) rotate(30deg); }
+  100% { transform: translate(18%, -6%) scale(1.1) rotate(60deg); }
+}
+@keyframes loginLights2 {
+  0% { transform: translate(10%, 12%) scale(1.05) rotate(0deg); }
+  50% { transform: translate(-6%, -8%) scale(1.1) rotate(-25deg); }
+  100% { transform: translate(-16%, 10%) scale(1.05) rotate(-50deg); }
 }

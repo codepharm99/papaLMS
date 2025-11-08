@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/components/user-context";
+import FinisherLights from "@/components/FinisherLights";
 
 type Mode = "login" | "register";
 
@@ -83,7 +84,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md py-10">
+    <div className="relative z-10 mx-auto max-w-md py-10">
+      <FinisherLights />
       <div className="mb-6 flex gap-2">
         <button
           onClick={() => switchMode("login")}

@@ -43,7 +43,10 @@ export default function Nav() {
   };
 
   const isCatalog = pathname.startsWith("/catalog");
-  const isMy = pathname.startsWith("/my") || pathname.startsWith("/catalog?mine");
+  const isMy =
+    pathname.startsWith("/my") ||
+    pathname.startsWith("/catalog?mine") ||
+    pathname.startsWith("/teacher/courses");
   const isAuthPage = pathname.startsWith("/login");
 
   return (
@@ -60,10 +63,14 @@ export default function Nav() {
         {/* Links */}
         <nav className="flex items-center gap-2">
           <NavLink href="/catalog" label="Каталог" isActive={isCatalog} />
-          {/* «Мои курсы»: пока ведём на фильтр каталога; позже сделаем отдельную страницу */}
-          <NavLink href="/catalog?mine=1" label="Мои курсы" isActive={isMy} />
+          {/* «Мои курсы»: студенты — свои записи, преподаватели — свои курсы */}
+          <NavLink
+            href={user?.role === "TEACHER" ? "/teacher/courses" : "/catalog?mine=1"}
+            label="Мои курсы"
+            isActive={isMy}
+          />
           {user?.role === "TEACHER" && (
-            <NavLink href="/teacher/courses" label="Курсы преподавателя" isActive={pathname.startsWith("/teacher/courses")} />
+            <NavLink href="/teacher/tools" label="Инструменты" isActive={pathname.startsWith("/teacher/tools")} />
           )}
           {user?.role === "ADMIN" && (
             <NavLink href="/admin/invites" label="Коды преподавателей" isActive={pathname.startsWith("/admin/invites")} />

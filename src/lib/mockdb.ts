@@ -51,6 +51,31 @@ export type TeacherInviteInfo = {
   usedBy?: { id: string; name: string } | null;
 };
 
+export type TestItem = {
+  id: string;
+  title: string;
+  description?: string | null;
+  createdAt: number;
+};
+
+export type QuestionItem = {
+  id: string;
+  testId: string;
+  text: string;
+  options?: string[] | null;
+  correctIndex?: number | null;
+  createdAt: number;
+};
+
+export type TestAssignmentItem = {
+  id: string;
+  testId: string;
+  student: { id: string; name: string };
+  dueAt?: number | null;
+  status: string;
+  createdAt: number;
+};
+
 const PASSWORD_SALT_ROUNDS = 10;
 
 const sanitizeUser = (user: { id: string; username: string; name: string; role: Role } | null): User | null =>
@@ -381,5 +406,183 @@ function mapTeacherCourse(course: {
     orgTag: course.orgTag,
     description: course.description,
     createdAt: course.createdAt.getTime(),
+  };
+}
+
+export async function listTeacherTests(teacherId: string): Promise<TestItem[]> {
+  const tests = await prisma.test.findMany({ where: { teacherId }, orderBy: { createdAt: "desc" } });
+  return tests.map(t => ({ id: t.id, title: t.title, description: t.description, createdAt: t.createdAt.getTime() }));
+}
+
+export async function createTestForTeacher(
+  teacher: User,
+  data: { title: string; description?: string }
+): Promise<{ ok: true; item: TestItem } | { error: "FORBIDDEN" | "TITLE_REQUIRED" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const title = normalizeName(data.title);
+  const description = data.description?.trim();
+  if (!title) return { error: "TITLE_REQUIRED" };
+  const t = await prisma.test.create({ data: { title, description, teacherId: teacher.id } });
+  return { ok: true, item: { id: t.id, title: t.title, description: t.description, createdAt: t.createdAt.getTime() } };
+}
+
+export async function addQuestionToTest(
+  teacher: User,
+  testId: string,
+  data: { text: string; options?: string[]; correctIndex?: number | null }
+): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "TEXT_REQUIRED" | "INVALID_OPTIONS" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) return { error: "TEST_NOT_FOUND" };
+  if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  const text = String(data.text ?? "").trim();
+  if (!text) return { error: "TEXT_REQUIRED" };
+  let options: string[] | null = null;
+  let correctIndex: number | null = null;
+  if (data.options && data.options.length > 0) {
+    options = data.options.map(o => String(o ?? "").trim()).filter(Boolean);
+    if (options.length === 0) options = null;
+    if (options && data.correctIndex != null) {
+      if (data.correctIndex < 0 || data.correctIndex >= options.length) return { error: "INVALID_OPTIONS" };
+      correctIndex = data.correctIndex;
+    }
+  }
+  const q = await prisma.question.create({
+    data: { testId, text, options: options ? (options as unknown as Prisma.JsonValue) : null, correctIndex },
+  });
+  return {
+    ok: true,
+    item: {
+      id: q.id,
+      testId: q.testId,
+      text: q.text,
+      options: (q.options as unknown as string[] | null) ?? null,
+      correctIndex: q.correctIndex ?? null,
+      createdAt: q.createdAt.getTime(),
+    },
+  };
+}
+
+export async function listQuestionsForTest(
+  teacher: User,
+  testId: string
+): Promise<{ ok: true; test: TestItem; items: QuestionItem[] } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) return { error: "TEST_NOT_FOUND" };
+  if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  const qs = await prisma.question.findMany({ where: { testId }, orderBy: { createdAt: "asc" } });
+  const items: QuestionItem[] = qs.map(q => ({
+    id: q.id,
+    testId: q.testId,
+    text: q.text,
+    options: (q.options as unknown as string[] | null) ?? null,
+    correctIndex: q.correctIndex ?? null,
+    createdAt: q.createdAt.getTime(),
+  }));
+  const testItem: TestItem = { id: test.id, title: test.title, description: test.description, createdAt: test.createdAt.getTime() };
+  return { ok: true, test: testItem, items };
+}
+
+export async function updateQuestionInTest(
+  teacher: User,
+  testId: string,
+  questionId: string,
+  data: { text?: string; options?: string[] | null; correctIndex?: number | null }
+): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "QUESTION_NOT_FOUND" | "INVALID_OPTIONS" | "TEXT_REQUIRED" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) return { error: "TEST_NOT_FOUND" };
+  if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  const q = await prisma.question.findUnique({ where: { id: questionId } });
+  if (!q || q.testId !== testId) return { error: "QUESTION_NOT_FOUND" };
+
+  const updates: { text?: string; options?: Prisma.JsonValue | null; correctIndex?: number | null } = {};
+  if (data.text != null) {
+    const t = String(data.text).trim();
+    if (!t) return { error: "TEXT_REQUIRED" };
+    updates.text = t;
+  }
+  if (data.options !== undefined) {
+    const options = data.options?.map(o => String(o ?? "").trim()).filter(Boolean) ?? null;
+    if (options && data.correctIndex != null) {
+      if (data.correctIndex < 0 || data.correctIndex >= options.length) return { error: "INVALID_OPTIONS" };
+      updates.correctIndex = data.correctIndex;
+    } else if (data.correctIndex === null) {
+      updates.correctIndex = null;
+    }
+    updates.options = options as unknown as Prisma.JsonValue | null;
+  } else if (data.correctIndex != null) {
+    // Only change correct index when options exist on the question
+    const opts = (q.options as unknown as string[] | null) ?? null;
+    if (!opts) return { error: "INVALID_OPTIONS" };
+    if (data.correctIndex < 0 || data.correctIndex >= opts.length) return { error: "INVALID_OPTIONS" };
+    updates.correctIndex = data.correctIndex;
+  }
+
+  const uq = await prisma.question.update({ where: { id: questionId }, data: updates });
+  return {
+    ok: true,
+    item: {
+      id: uq.id,
+      testId: uq.testId,
+      text: uq.text,
+      options: (uq.options as unknown as string[] | null) ?? null,
+      correctIndex: uq.correctIndex ?? null,
+      createdAt: uq.createdAt.getTime(),
+    },
+  };
+}
+
+export async function deleteQuestionFromTest(
+  teacher: User,
+  testId: string,
+  questionId: string
+): Promise<{ ok: true } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "QUESTION_NOT_FOUND" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) return { error: "TEST_NOT_FOUND" };
+  if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  const q = await prisma.question.findUnique({ where: { id: questionId } });
+  if (!q || q.testId !== testId) return { error: "QUESTION_NOT_FOUND" };
+  await prisma.question.delete({ where: { id: questionId } });
+  return { ok: true };
+}
+
+export async function listStudents(): Promise<Array<{ id: string; name: string }>> {
+  const users = await prisma.user.findMany({ where: { role: "STUDENT" }, orderBy: { name: "asc" } });
+  return users.map(u => ({ id: u.id, name: u.name }));
+}
+
+export async function assignTestToStudent(
+  teacher: User,
+  data: { testId: string; studentId: string; dueAt?: string | null }
+): Promise<{ ok: true; item: TestAssignmentItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "STUDENT_NOT_FOUND" | "INVALID_DUE" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const test = await prisma.test.findUnique({ where: { id: data.testId } });
+  if (!test) return { error: "TEST_NOT_FOUND" };
+  if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  const student = await prisma.user.findUnique({ where: { id: data.studentId } });
+  if (!student || student.role !== "STUDENT") return { error: "STUDENT_NOT_FOUND" };
+  let dueAt: Date | null = null;
+  if (data.dueAt) {
+    const d = new Date(data.dueAt);
+    if (isNaN(d.getTime())) return { error: "INVALID_DUE" };
+    dueAt = d;
+  }
+  const a = await prisma.testAssignment.create({
+    data: { testId: test.id, studentId: student.id, assignedById: teacher.id, dueAt },
+    include: { student: true },
+  });
+  return {
+    ok: true,
+    item: {
+      id: a.id,
+      testId: a.testId,
+      student: { id: a.student.id, name: a.student.name },
+      dueAt: a.dueAt?.getTime() ?? null,
+      status: a.status,
+      createdAt: a.createdAt.getTime(),
+    },
   };
 }

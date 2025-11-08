@@ -25,6 +25,9 @@ model User {
   materials       Material[]       @relation("AuthorMaterials")
   createdInvites  TeacherInvite[]  @relation("AdminInvites")
   usedInvites     TeacherInvite[]  @relation("UsedTeacherInvites")
+  tests           Test[]           @relation("TeacherTests")
+  studentAssignments TestAssignment[] @relation("StudentAssignments")
+  givenAssignments   TestAssignment[] @relation("GivenAssignments")
 }
 
 model Course {
@@ -80,4 +83,39 @@ enum Role {
   STUDENT
   TEACHER
   ADMIN
+}
+
+model Test {
+  id          String         @id @default(cuid())
+  teacherId   String
+  teacher     User           @relation("TeacherTests", fields: [teacherId], references: [id])
+  title       String
+  description String?
+  createdAt   DateTime       @default(now())
+  questions   Question[]
+  assignments TestAssignment[]
+}
+
+model Question {
+  id           String   @id @default(cuid())
+  testId       String
+  test         Test     @relation(fields: [testId], references: [id])
+  text         String
+  // Для простоты: варианты и индекс правильного ответа
+  options      Json?
+  correctIndex Int?
+  createdAt    DateTime @default(now())
+}
+
+model TestAssignment {
+  id            String   @id @default(cuid())
+  testId        String
+  test          Test     @relation(fields: [testId], references: [id])
+  studentId     String
+  student       User     @relation("StudentAssignments", fields: [studentId], references: [id])
+  assignedById  String
+  assignedBy    User     @relation("GivenAssignments", fields: [assignedById], references: [id])
+  dueAt         DateTime?
+  status        String   @default("ASSIGNED")
+  createdAt     DateTime @default(now())
 }
