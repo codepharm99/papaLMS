@@ -123,8 +123,8 @@
 
 html.login-pattern {
   --s: 100px;
-  --c1: #c3ccaf;
-  --c2: #67434f;
+  --c1: #c0d5e7;
+  --c2: #fff;
   --_s: calc(2 * var(--s)) calc(2 * var(--s));
   --_g: var(--_s) conic-gradient(at 40% 40%, #0000 75%, var(--c1) 0);
   --_p: var(--_s) conic-gradient(at 20% 20%, #0000 75%, var(--c2) 0);
