@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Fish, LogOut } from "lucide-react";
+import { Telescope, LogOut } from "lucide-react";
 import { useCurrentUser } from "@/components/user-context";
 import type { Role } from "@/lib/mockdb";
 
@@ -51,7 +51,7 @@ export default function Nav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
         {/* Brand */}
         <div className="flex items-center gap-2">
-          <Fish className="h-10 w-10 text-gray-900" aria-hidden="true" />
+          <Telescope className="h-8 w-8 text-gray-900" aria-hidden="true" />
           <Link href="/catalog" className="font-semibold tracking-tight">
             papaLMS
           </Link>

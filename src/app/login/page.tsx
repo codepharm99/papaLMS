@@ -112,7 +112,7 @@ export default function LoginPage() {
               className="w-full rounded-xl border px-3 py-2 outline-none focus:ring"
               value={loginUsername}
               onChange={(e) => setLoginUsername(e.target.value)}
-              placeholder="student1 / teacher1 / admin1"
+              placeholder="student1 / teacher1"
             />
           </div>
           <div className="space-y-1">
@@ -132,9 +132,6 @@ export default function LoginPage() {
           >
             {loginLoading ? "Входим..." : "Войти"}
           </button>
-          <p className="text-xs text-gray-500">
-            Демо-аккаунты: <b>student1/1111</b>, <b>teacher1/1111</b>, <b>admin1/1111</b>.
-          </p>
         </form>
       )}
 
