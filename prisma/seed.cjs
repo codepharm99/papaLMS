@@ -1,16 +1,11 @@
-import { PrismaClient, Role } from "@prisma/client";
-import bcrypt from "bcrypt";
+"use strict";
+
+const { PrismaClient, Role } = require("@prisma/client");
+const bcrypt = require("bcrypt");
 
 const prisma = new PrismaClient();
 
-async function upsertUser(params: {
-  id: string;
-  username: string;
-  name: string;
-  role: Role;
-  password: string;
-}) {
-  const { id, username, name, role, password } = params;
+async function upsertUser({ id, username, name, role, password }) {
   const normalizedUsername = username.toLowerCase();
   return prisma.user.upsert({
     where: { username: normalizedUsername },
@@ -19,8 +14,7 @@ async function upsertUser(params: {
   });
 }
 
-async function upsertCourse(data: { id: string; code: string; title: string; orgTag: string; teacherId: string }) {
-  const { id, code, title, orgTag, teacherId } = data;
+async function upsertCourse({ id, code, title, orgTag, teacherId }) {
   return prisma.course.upsert({
     where: { id },
     update: { code, title, orgTag, teacherId },
@@ -28,16 +22,7 @@ async function upsertCourse(data: { id: string; code: string; title: string; org
   });
 }
 
-async function upsertMaterial(data: {
-  id: string;
-  courseId: string;
-  teacherId: string;
-  title: string;
-  description?: string;
-  url?: string;
-  createdAt?: Date;
-}) {
-  const { id, courseId, teacherId, title, description, url, createdAt } = data;
+async function upsertMaterial({ id, courseId, teacherId, title, description, url, createdAt }) {
   return prisma.material.upsert({
     where: { id },
     update: { title, description, url },
@@ -79,18 +64,18 @@ async function main() {
     upsertCourse({ id: "c3", code: "DB110", title: "Базы данных", orgTag: "IUA", teacherId: teacher.id }),
   ]);
 
-  const courseMap = Object.fromEntries(courses.map((c) => [c.id, c]));
+  const courseMap = Object.fromEntries(courses.map(course => [course.id, course]));
 
   await prisma.enrollment.upsert({
-    where: { userId_courseId: { userId: student.id, courseId: courseMap["c2"].id } },
+    where: { userId_courseId: { userId: student.id, courseId: courseMap.c2.id } },
     update: {},
-    create: { id: "e1", userId: student.id, courseId: courseMap["c2"].id },
+    create: { id: "e1", userId: student.id, courseId: courseMap.c2.id },
   });
 
   const now = Date.now();
   await upsertMaterial({
     id: "m1",
-    courseId: courseMap["c2"].id,
+    courseId: courseMap.c2.id,
     teacherId: teacher.id,
     title: "Силлабус курса ML201 (PDF)",
     url: "https://example.org/syllabus.pdf",
@@ -98,7 +83,7 @@ async function main() {
   });
   await upsertMaterial({
     id: "m2",
-    courseId: courseMap["c2"].id,
+    courseId: courseMap.c2.id,
     teacherId: teacher.id,
     title: "Лекция 1 — введение",
     description: "Слайды и краткие заметки",
@@ -115,8 +100,8 @@ async function main() {
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
+  .catch(err => {
+    console.error(err);
     process.exit(1);
   })
   .finally(async () => {
