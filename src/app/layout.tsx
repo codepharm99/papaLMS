@@ -5,8 +5,8 @@ import { UserProvider } from "@/components/user-context";
 import { currentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "LMS Demo",
-  description: "Минимальная LMS-демо на Next.js",
+  title: "papaLMS",
+  description: "LMS на Next.js",
 };
 
 export default async function RootLayout({
