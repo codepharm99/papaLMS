@@ -33,6 +33,15 @@ export type Material = {
   createdAt: number;
 };
 
+export type TeacherCourse = {
+  id: string;
+  code: string;
+  title: string;
+  orgTag: string;
+  description?: string | null;
+  createdAt: number;
+};
+
 export type TeacherInviteInfo = {
   id: string;
   code: string;
@@ -238,6 +247,41 @@ export async function addMaterial(
   };
 }
 
+export async function listTeacherCourses(teacherId: string): Promise<TeacherCourse[]> {
+  const courses = await prisma.course.findMany({
+    where: { teacherId },
+    orderBy: { createdAt: "desc" },
+  });
+  return courses.map(mapTeacherCourse);
+}
+
+export async function createCourseForTeacher(
+  teacher: User,
+  data: { title: string; code: string; orgTag: string; description?: string }
+) {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" as const } as const;
+
+  const title = normalizeName(data.title);
+  const code = data.code.trim().toUpperCase();
+  const orgTag = data.orgTag.trim().toUpperCase();
+  const description = data.description?.trim();
+  if (!title) return { error: "TITLE_REQUIRED" as const } as const;
+  if (!code) return { error: "CODE_REQUIRED" as const } as const;
+  if (!orgTag) return { error: "ORG_REQUIRED" as const } as const;
+
+  try {
+    const created = await prisma.course.create({
+      data: { title, code, orgTag, description, teacherId: teacher.id },
+    });
+    return { ok: true as const, item: mapTeacherCourse(created) };
+  } catch (err) {
+    if (isPrismaKnownError(err) && err.code === "P2002") {
+      return { error: "CODE_CONFLICT" as const } as const;
+    }
+    throw err;
+  }
+}
+
 type RegisterResult = { ok: true; user: User } | { error: "USERNAME_TAKEN" | "INVITE_REQUIRED" | "INVITE_INVALID" };
 
 export async function registerStudent(data: { username: string; name: string; password: string }): Promise<RegisterResult> {
@@ -320,4 +364,22 @@ export async function listTeacherInvites(): Promise<TeacherInviteInfo[]> {
 
 function isPrismaKnownError(error: unknown): error is Prisma.PrismaClientKnownRequestError {
   return error instanceof Prisma.PrismaClientKnownRequestError;
+}
+
+function mapTeacherCourse(course: {
+  id: string;
+  code: string;
+  title: string;
+  orgTag: string;
+  description: string | null;
+  createdAt: Date;
+}): TeacherCourse {
+  return {
+    id: course.id,
+    code: course.code,
+    title: course.title,
+    orgTag: course.orgTag,
+    description: course.description,
+    createdAt: course.createdAt.getTime(),
+  };
 }

@@ -32,10 +32,14 @@ model Course {
   code        String
   title       String
   orgTag      String
+  description String?
   teacherId   String
   teacher     User          @relation("TeacherCourses", fields: [teacherId], references: [id])
   enrollments Enrollment[]
   materials   Material[]
+  createdAt   DateTime      @default(now())
+
+  @@unique([code])
 }
 
 model Enrollment {

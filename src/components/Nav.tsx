@@ -44,6 +44,7 @@ export default function Nav() {
 
   const isCatalog = pathname.startsWith("/catalog");
   const isMy = pathname.startsWith("/my") || pathname.startsWith("/catalog?mine");
+  const isAuthPage = pathname.startsWith("/login");
 
   return (
     <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
@@ -60,30 +61,30 @@ export default function Nav() {
         <nav className="flex items-center gap-2">
           <NavLink href="/catalog" label="Каталог" isActive={isCatalog} />
           {/* «Мои курсы»: пока ведём на фильтр каталога; позже сделаем отдельную страницу */}
-          <NavLink
-            href="/catalog?mine=1"
-            label="Мои курсы"
-            isActive={isMy}
-          />
+          <NavLink href="/catalog?mine=1" label="Мои курсы" isActive={isMy} />
+          {user?.role === "TEACHER" && (
+            <NavLink href="/teacher/courses" label="Курсы преподавателя" isActive={pathname.startsWith("/teacher/courses")} />
+          )}
           {user?.role === "ADMIN" && (
             <NavLink href="/admin/invites" label="Коды преподавателей" isActive={pathname.startsWith("/admin/invites")} />
           )}
         </nav>
 
-        {/* User / Role / Logout */}
-        <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-gray-600 md:inline">
-            {user?.name ?? "Гость"} · {user ? roleLabels[user.role] ?? user.role : "—"}
-          </span>
-          <button
-            type="button"
-            onClick={() => router.push("/login")}
-            className="inline-flex items-center gap-1 rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200"
-          >
-            <LogOut className="h-4 w-4" aria-hidden="true" />
-            {user ? "Выйти" : "Войти"}
-          </button>
-        </div>
+        {!isAuthPage && (
+          <div className="flex items-center gap-3">
+            <span className="hidden text-sm text-gray-600 md:inline">
+              {user?.name ?? "Гость"} · {user ? roleLabels[user.role] ?? user.role : "—"}
+            </span>
+            <button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="inline-flex items-center gap-1 rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200"
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              {user ? "Выйти" : "Войти"}
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

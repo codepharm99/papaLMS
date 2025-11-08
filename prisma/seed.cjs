@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 "use strict";
 
 const { PrismaClient, Role } = require("@prisma/client");
@@ -14,11 +15,11 @@ async function upsertUser({ id, username, name, role, password }) {
   });
 }
 
-async function upsertCourse({ id, code, title, orgTag, teacherId }) {
+async function upsertCourse({ id, code, title, orgTag, description, teacherId }) {
   return prisma.course.upsert({
     where: { id },
-    update: { code, title, orgTag, teacherId },
-    create: { id, code, title, orgTag, teacherId },
+    update: { code, title, orgTag, description, teacherId },
+    create: { id, code, title, orgTag, description, teacherId },
   });
 }
 
@@ -59,9 +60,30 @@ async function main() {
   });
 
   const courses = await Promise.all([
-    upsertCourse({ id: "c1", code: "CS101", title: "Введение в программирование", orgTag: "IUA", teacherId: teacher.id }),
-    upsertCourse({ id: "c2", code: "ML201", title: "Машинное обучение", orgTag: "IUA", teacherId: teacher.id }),
-    upsertCourse({ id: "c3", code: "DB110", title: "Базы данных", orgTag: "IUA", teacherId: teacher.id }),
+    upsertCourse({
+      id: "c1",
+      code: "CS101",
+      title: "Введение в программирование",
+      orgTag: "IUA",
+      description: "Базовый курс по основам CS для первокурсников.",
+      teacherId: teacher.id,
+    }),
+    upsertCourse({
+      id: "c2",
+      code: "ML201",
+      title: "Машинное обучение",
+      orgTag: "IUA",
+      description: "Практикум по классическим алгоритмам ML.",
+      teacherId: teacher.id,
+    }),
+    upsertCourse({
+      id: "c3",
+      code: "DB110",
+      title: "Базы данных",
+      orgTag: "IUA",
+      description: "SQL, нормализация и проектирование.",
+      teacherId: teacher.id,
+    }),
   ]);
 
   const courseMap = Object.fromEntries(courses.map(course => [course.id, course]));

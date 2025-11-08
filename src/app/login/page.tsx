@@ -1,7 +1,6 @@
 "use client";
-"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/components/user-context";
 
@@ -12,8 +11,8 @@ export default function LoginPage() {
   const { refresh } = useCurrentUser();
 
   const [mode, setMode] = useState<Mode>("login");
-  const [loginUsername, setLoginUsername] = useState("student1");
-  const [loginPassword, setLoginPassword] = useState("1111");
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -24,6 +23,14 @@ export default function LoginPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("login-pattern");
+    return () => {
+      root.classList.remove("login-pattern");
+    };
+  }, []);
 
   const switchMode = (next: Mode) => {
     setMode(next);
@@ -81,7 +88,7 @@ export default function LoginPage() {
         <button
           onClick={() => switchMode("login")}
           className={`rounded-xl px-4 py-2 text-sm ${
-            mode === "login" ? "bg-gray-900 text-white" : "border"
+            mode === "login" ? "bg-gray-900 text-white" : "border bg-white text-gray-700"
           }`}
         >
           Вход
@@ -89,7 +96,7 @@ export default function LoginPage() {
         <button
           onClick={() => switchMode("register")}
           className={`rounded-xl px-4 py-2 text-sm ${
-            mode === "register" ? "bg-gray-900 text-white" : "border"
+            mode === "register" ? "bg-gray-900 text-white" : "border bg-white text-gray-700"
           }`}
         >
           Регистрация
