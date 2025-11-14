@@ -11,13 +11,14 @@ type TestItem = { id: string; title: string; description?: string; createdAt: nu
 type QuestionItem = { id: string; testId: string; text: string; options?: string[]; correctIndex?: number; createdAt: number };
 type StudentItem = { id: string; name: string };
 type StudentStatus = { id: string; name: string; status: "ASSIGNED" | "IN_PROGRESS" | "COMPLETED"; timestamp: number };
+type QuestionPayload = { text: string; options?: string[]; correctIndex?: number | null };
 
 export default function EditTestPage() {
   const params = useParams<{ id: string }>();
   const testId = params?.id as string;
 
   const [test, setTest] = useState<TestItem | null>(null);
-  const [questions, setQuestions] = useState<QuestionItem[]>([]);
+  const [, setQuestions] = useState<QuestionItem[]>([]);
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [studentStatus, setStudentStatus] = useState<StudentStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +78,7 @@ export default function EditTestPage() {
       setStatusLoading(true);
       try {
         const res = await fetch(`/api/teacher/tests/${testId}/status`);
+        if (!res.ok) throw new Error(`Статус ${res.status}`);
         const data: StudentStatus[] = await res.json();
         if (!cancelled) setStudentStatus(data);
       } catch (e) { console.error("Ошибка загрузки статуса студентов:", e); }
@@ -105,8 +107,11 @@ export default function EditTestPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const filled = options.map(o => o.trim()).filter(Boolean);
-    const body: any = { text };
-    if (filled.length) { body.options = filled; body.correctIndex = correct; }
+    const body: QuestionPayload = { text };
+    if (filled.length) {
+      body.options = filled;
+      body.correctIndex = correct ?? null;
+    }
     try {
       const res = await fetch(`/api/teacher/tests/${testId}/questions`, {
         method: "POST",

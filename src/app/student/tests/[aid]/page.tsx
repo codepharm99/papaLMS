@@ -33,8 +33,8 @@ export default function TakeTestPage() {
           setAssignment(j.assignment);
           setQuestions(j.questions ?? []);
         }
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Ошибка загрузки");
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Ошибка загрузки");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -135,4 +135,3 @@ export default function TakeTestPage() {
     </div>
   );
 }
-

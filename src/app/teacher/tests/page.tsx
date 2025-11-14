@@ -26,8 +26,8 @@ export default function TeacherTestsPage() {
         if (!res.ok) throw new Error("Не удалось загрузить тесты");
         const j: { data: TestItem[] } = await res.json();
         if (!cancelled) setTests(j.data ?? []);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Ошибка загрузки");
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Ошибка загрузки");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -54,8 +54,8 @@ export default function TeacherTestsPage() {
       setDescription("");
       // Redirect to edit page
       window.location.href = `/teacher/tests/${j.item.id}/edit`;
-    } catch (e: any) {
-      setError(e?.message || "Ошибка при создании");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка при создании");
     }
   };
 
@@ -114,4 +114,3 @@ export default function TeacherTestsPage() {
     </div>
   );
 }
-

@@ -76,6 +76,13 @@ export type TestAssignmentItem = {
   createdAt: number;
 };
 
+export type TestStudentStatus = {
+  id: string;
+  name: string;
+  status: string;
+  timestamp: number;
+};
+
 const PASSWORD_SALT_ROUNDS = 10;
 
 const sanitizeUser = (user: { id: string; username: string; name: string; role: Role } | null): User | null =>
@@ -448,7 +455,7 @@ export async function addQuestionToTest(
     }
   }
   const q = await prisma.question.create({
-    data: { testId, text, options: options ? (options as unknown as Prisma.JsonValue) : null, correctIndex },
+    data: { testId, text, options: options ? (options as unknown as Prisma.InputJsonValue) : undefined, correctIndex },
   });
   return {
     ok: true,
@@ -497,7 +504,7 @@ export async function updateQuestionInTest(
   const q = await prisma.question.findUnique({ where: { id: questionId } });
   if (!q || q.testId !== testId) return { error: "QUESTION_NOT_FOUND" };
 
-  const updates: { text?: string; options?: Prisma.JsonValue | null; correctIndex?: number | null } = {};
+  const updates: Prisma.QuestionUpdateInput = {};
   if (data.text != null) {
     const t = String(data.text).trim();
     if (!t) return { error: "TEXT_REQUIRED" };
@@ -511,7 +518,7 @@ export async function updateQuestionInTest(
     } else if (data.correctIndex === null) {
       updates.correctIndex = null;
     }
-    updates.options = options as unknown as Prisma.JsonValue | null;
+    updates.options = options ? (options as unknown as Prisma.InputJsonValue) : Prisma.DbNull;
   } else if (data.correctIndex != null) {
     // Only change correct index when options exist on the question
     const opts = (q.options as unknown as string[] | null) ?? null;
@@ -585,6 +592,28 @@ export async function assignTestToStudent(
       createdAt: a.createdAt.getTime(),
     },
   };
+}
+
+export async function listStudentStatusesForTest(
+  teacher: User,
+  testId: string
+): Promise<{ ok: true; items: TestStudentStatus[] } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) return { error: "TEST_NOT_FOUND" };
+  if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  const assignments = await prisma.testAssignment.findMany({
+    where: { testId },
+    orderBy: { createdAt: "asc" },
+    include: { student: true },
+  });
+  const items: TestStudentStatus[] = assignments.map(a => ({
+    id: a.student.id,
+    name: a.student.name,
+    status: a.status,
+    timestamp: a.createdAt.getTime(),
+  }));
+  return { ok: true, items };
 }
 
 export type StudentAssignment = {
