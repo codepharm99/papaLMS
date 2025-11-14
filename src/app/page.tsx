@@ -1,103 +1,121 @@
-"use client";
-import { useEffect, useRef } from "react";
 import Link from "next/link";
 
 export default function LandingPage() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // Простая анимация «плавные огни»
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d")!;
-    let w = (canvas.width = window.innerWidth);
-    let h = (canvas.height = window.innerHeight);
-
-    const lights = Array.from({ length: 25 }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: 120 + Math.random() * 120,
-      dx: -0.3 + Math.random() * 0.6,
-      dy: -0.3 + Math.random() * 0.6,
-      color: `hsla(${Math.random() * 360}, 70%, 60%, .25)`
-    }));
-
-    function draw() {
-      ctx.clearRect(0, 0, w, h);
-
-      lights.forEach((p) => {
-        ctx.beginPath();
-        const grad = ctx.createRadialGradient(p.x, p.y, p.r * 0.2, p.x, p.y, p.r);
-        grad.addColorStop(0, p.color);
-        grad.addColorStop(1, "transparent");
-        ctx.fillStyle = grad;
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-
-        p.x += p.dx;
-        p.y += p.dy;
-
-        if (p.x < 0 || p.x > w) p.dx *= -1;
-        if (p.y < 0 || p.y > h) p.dy *= -1;
-      });
-
-      requestAnimationFrame(draw);
-    }
-
-    draw();
-
-    const resize = () => {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
-    };
-    window.addEventListener("resize", resize);
-
-    return () => window.removeEventListener("resize", resize);
-  }, []);
-
   return (
-    <main
-      className="
-        relative w-full h-screen overflow-hidden 
-        flex items-center justify-center 
-        bg-white dark:bg-black
-        text-center"
-    >
-      {/* Canvas Background */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        aria-hidden="true"
-      />
+    <main className="bg-white text-gray-900 dark:bg-black dark:text-white">
+      <section className="relative overflow-hidden">
+        <div
+          className="absolute inset-0"
+          aria-hidden="true"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at top, rgba(99,102,241,.35), transparent 45%), radial-gradient(circle at 20% 20%, rgba(236,72,153,.25), transparent 40%), radial-gradient(circle at 80% 0%, rgba(59,130,246,.25), transparent 50%)",
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/85 via-white/90 to-white dark:from-black/80 dark:via-black/90 dark:to-black" aria-hidden="true" />
 
-      {/* Content */}
-      <section className="relative z-10 max-w-2xl px-6">
-        <h1
-          className="
-            text-4xl md:text-6xl font-semibold 
-            text-gray-900 dark:text-white 
-            tracking-tight"
-        >
-          Учись. Преподавай. Развивайся.
-        </h1>
+        <section className="relative z-10 flex min-h-screen w-full flex-col justify-center gap-14 p-0">
+          <div className="grid gap-10 lg:grid-cols-[3fr,2fr] lg:items-center">
+            <div className="space-y-6 text-center lg:text-left">
+              <p className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:border-white/20 dark:text-gray-300">
+                Новая академическая платформа
+              </p>
+            <h1 className="text-4xl font-semibold leading-tight md:text-6xl">
+              LMS, которая понимает расписание, курсы и реальную нагрузку
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300">
+              Управляйте очными и дистанционными курсами, проверяйте работы, следите за прогрессом студентов и делитесь материалами в одном адаптивном пространстве.
+            </p>
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
+              <Link href="/login" aria-label="Войти в систему" className="w-full sm:w-auto">
+                <span className="inline-flex w-full items-center justify-center rounded-xl bg-black px-8 py-3 text-lg font-medium text-white transition hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100">
+                  Войти в платформу
+                </span>
+              </Link>
+              <a
+                href="#features"
+                className="inline-flex items-center justify-center gap-2 text-base font-medium text-gray-900 underline-offset-4 hover:underline dark:text-white"
+              >
+                Посмотреть возможности →
+              </a>
+            </div>
+            <div className="grid gap-6 rounded-2xl border border-gray-100 bg-white/80 p-6 text-left shadow-lg backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-white sm:grid-cols-3">
+              {[
+                { label: "Активных курсов", value: "120+" },
+                { label: "Студентов онлайн", value: "4 500" },
+                { label: "Средний рейтинг", value: "4.9/5" },
+              ].map(item => (
+                <div key={item.label}>
+                  <p className="text-3xl font-semibold">{item.value}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        <p className="mt-4 text-lg md:text-xl text-gray-600 dark:text-gray-300">
-          Простая LMS для студентов и преподавателей
-        </p>
+          <div className="rounded-3xl border border-gray-100 bg-white/80 p-6 shadow-2xl shadow-black/5 backdrop-blur dark:border-white/10 dark:bg-white/5">
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-gray-500 dark:text-gray-300">Панель преподавателя</p>
+            <div className="mt-4 space-y-4">
+              {[
+                {
+                  title: "Назначение заданий",
+                  description: "Назначайте тесты и проекты по группам, автоматически выдавая дедлайны и напоминания.",
+                },
+                {
+                  title: "Аналитика прогресса",
+                  description: "Отслеживайте вовлеченность, посещаемость и KPI по каждому курсу в реальном времени.",
+                },
+                {
+                  title: "Тестирование",
+                  description: "Редактор вопросов, автопроверка и индивидуальная обратная связь для студентов.",
+                },
+                {
+                  title: "Материалы и уведомления",
+                  description: "Библиотека лекций, файлов и быстрые анонсы для потоков и малых групп.",
+                },
+              ].map((feature, idx) => (
+                <div key={feature.title} className="flex items-start gap-4 rounded-2xl bg-gray-50/80 p-4 dark:bg-white/5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white dark:bg-white dark:text-black">
+                    0{idx + 1}
+                  </span>
+                  <div>
+                    <p className="font-semibold">{feature.title}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{feature.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          </div>
 
-        <Link href="/login" aria-label="Войти в систему">
-          <button
-            className="
-              mt-8 px-8 py-3 rounded-xl 
-              bg-black dark:bg-white 
-              text-white dark:text-black 
-              text-lg font-medium 
-              hover:opacity-80 transition"
-          >
-            Войти
-          </button>
-        </Link>
+          {/* Features */}
+          <section id="features" className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {[{
+            title: "Интеллектуальные тесты",
+            description: "Создавайте задания за минуты, отслеживайте попытки и мгновенно получайте статистику по вопросам.",
+          },
+          {
+            title: "Личная карьера студента",
+            description: "Подборка материалов, KPI, GPA и рекомендации на основе текущего прогресса.",
+          },
+          {
+            title: "Уведомления и расписания",
+            description: "Синхронизация с календарями, напоминания о дедлайнах и автоматические объявления для групп.",
+          }].map(card => (
+            <article key={card.title} className="rounded-2xl border border-gray-100 bg-white/90 p-6 shadow-lg shadow-black/5 backdrop-blur dark:border-white/10 dark:bg-white/5">
+              <h3 className="text-xl font-semibold">{card.title}</h3>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{card.description}</p>
+            </article>
+          ))}
+        </section>
+
+        {/* Highlight */}
+        <section className="rounded-3xl border border-dashed border-gray-200 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 p-8 text-center text-gray-900 dark:border-white/10 dark:text-white">
+          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-gray-500 dark:text-gray-300">доверяют университеты</p>
+          <p className="mt-4 text-2xl font-semibold">“LMS помогла нашим преподавателям сократить время на проверки на 40% и увеличила вовлеченность студентов”</p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-300">— декан факультета информационных технологий</p>
+        </section>
+        </section>
       </section>
     </main>
   );
