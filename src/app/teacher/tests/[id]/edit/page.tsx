@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-type TestItem = { id: string; title: string; description?: string | null; createdAt: number };
-type QuestionItem = { id: string; testId: string; text: string; options?: string[] | null; correctIndex?: number | null; createdAt: number };
+type TestItem = { id: string; title: string; description?: string; createdAt: number };
+type QuestionItem = { id: string; testId: string; text: string; options?: string[]; correctIndex?: number; createdAt: number };
 type StudentItem = { id: string; name: string };
+type StudentStatus = { id: string; name: string; status: "ASSIGNED" | "IN_PROGRESS" | "COMPLETED"; timestamp: number };
 
 export default function EditTestPage() {
   const params = useParams<{ id: string }>();
@@ -17,64 +18,75 @@ export default function EditTestPage() {
 
   const [test, setTest] = useState<TestItem | null>(null);
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
+  const [students, setStudents] = useState<StudentItem[]>([]);
+  const [studentStatus, setStudentStatus] = useState<StudentStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
 
-  // form state for new question
   const [text, setText] = useState("");
   const [options, setOptions] = useState<string[]>([""]);
   const [correct, setCorrect] = useState<number | null>(null);
 
+  const [assignStudentId, setAssignStudentId] = useState("");
+  const [assignDueAt, setAssignDueAt] = useState("");
+  const [assignMsg, setAssignMsg] = useState<string | null>(null);
+
+  // --- Загрузка теста и вопросов ---
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      setError(null);
       try {
-        const res = await fetch(`/api/teacher/tests/${testId}/questions`, { cache: "no-store" });
-        if (!res.ok) throw new Error("Не удалось загрузить тест");
-        const j: { test: TestItem; items: QuestionItem[] } = await res.json();
+        const res = await fetch(`/api/teacher/tests/${testId}/questions`);
+        const data = await res.json();
         if (!cancelled) {
-          setTest(j.test);
-          setQuestions(j.items ?? []);
+          setTest(data.test);
+          setQuestions(data.items ?? []);
         }
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Ошибка загрузки");
+      } catch (e) {
+        console.error("Ошибка загрузки теста:", e);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     if (testId) load();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [testId]);
 
-  // Students to assign
-  const [students, setStudents] = useState<StudentItem[]>([]);
-  const [assignStudentId, setAssignStudentId] = useState<string>("");
-  const [assignDueAt, setAssignDueAt] = useState<string>("");
-  const [assignMsg, setAssignMsg] = useState<string | null>(null);
-
+  // --- Загрузка студентов ---
   useEffect(() => {
     let cancelled = false;
     async function loadStudents() {
       try {
-        const r = await fetch("/api/teacher/students", { cache: "no-store" });
-        if (!r.ok) return;
-        const j: { data: StudentItem[] } = await r.json();
+        const res = await fetch("/api/teacher/students");
+        const j = await res.json();
         if (!cancelled) {
           setStudents(j.data ?? []);
-          if (j.data?.length) setAssignStudentId(prev => prev || j.data[0].id);
+          if (j.data?.length) setAssignStudentId(j.data[0].id);
         }
-      } catch {}
+      } catch (e) { console.error(e); }
     }
     loadStudents();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
+  // --- Загрузка статуса студентов для текущего теста ---
+  useEffect(() => {
+    let cancelled = false;
+    async function loadStatus() {
+      setStatusLoading(true);
+      try {
+        const res = await fetch(`/api/teacher/tests/${testId}/status`);
+        const data: StudentStatus[] = await res.json();
+        if (!cancelled) setStudentStatus(data);
+      } catch (e) { console.error("Ошибка загрузки статуса студентов:", e); }
+      finally { if (!cancelled) setStatusLoading(false); }
+    }
+    if (testId) loadStatus();
+    return () => { cancelled = true; };
+  }, [testId]);
+
+  // --- Работа с вариантами ---
   const addOption = () => setOptions(prev => [...prev, ""]);
   const removeOption = (idx: number) => {
     setOptions(prev => prev.filter((_, i) => i !== idx));
@@ -84,296 +96,112 @@ export default function EditTestPage() {
 
   const canSubmit = useMemo(() => {
     const filled = options.map(o => o.trim()).filter(Boolean);
-    if (filled.length === 0) return text.trim().length > 0; // открытый вопрос
+    if (filled.length === 0) return text.trim().length > 0;
     if (correct == null) return false;
     return text.trim().length > 0 && correct >= 0 && correct < filled.length;
   }, [text, options, correct]);
 
+  // --- Добавление вопроса ---
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    const filled = options.map(o => o.trim()).filter(Boolean);
+    const body: any = { text };
+    if (filled.length) { body.options = filled; body.correctIndex = correct; }
     try {
-      const filled = options.map(o => o.trim()).filter(Boolean);
-      const body: any = { text };
-      if (filled.length > 0) {
-        body.options = filled;
-        body.correctIndex = correct;
-      }
       const res = await fetch(`/api/teacher/tests/${testId}/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j?.error || "Не удалось добавить вопрос");
-      setQuestions(prev => [...prev, j.item]);
-      setText("");
-      setOptions([""]);
-      setCorrect(null);
-    } catch (e: any) {
-      setError(e?.message || "Ошибка");
-    }
+      const j = await res.json();
+      if (res.ok) { setQuestions(prev => [...prev, j.item]); setText(""); setOptions([""]); setCorrect(null); }
+    } catch (e) { console.error(e); }
   };
 
   return (
-    <div className="space-y-4">
-      <Breadcrumbs
-        items={[
-          { label: "Инструменты", href: "/teacher/tools" },
-          { label: "Меню", href: "/teacher/tools" },
-          { label: "Тестирование (прошлые тесты)", href: "/teacher/tests" },
-          { label: test?.title ? `Создать тест: ${test.title}` : "Создать тест" },
-        ]}
-      />
+    <div className="space-y-6">
+      <Breadcrumbs items={[
+        { label: "Инструменты", href: "/teacher/tools" },
+        { label: "Тестирование", href: "/teacher/tests" },
+        { label: test?.title || "Редактирование теста" },
+      ]} />
 
-      {loading ? (
-        <div className="text-sm text-gray-600">Загрузка…</div>
-      ) : (
+      {loading ? <div>Загрузка теста...</div> : (
         <>
-          <section className="rounded-xl border bg-white p-4">
-            <h1 className="mb-3 text-lg font-medium">Добавить вопрос</h1>
-            <form onSubmit={handleAdd} className="grid gap-3 md:max-w-2xl">
-              <label className="grid gap-1">
-                <span className="text-sm text-gray-700">Формулировка</span>
-                <Textarea value={text} onChange={e => setText(e.target.value)} required placeholder="Введите вопрос" />
-              </label>
-
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">Варианты ответа (необязательно)</span>
-                  <Button type="button" onClick={addOption} variant="secondary" className="text-sm">
-                    Добавить вариант
-                  </Button>
+          {/* Добавление вопросов */}
+          <section className="border p-4 rounded-xl bg-white">
+            <h2 className="text-lg font-semibold mb-2">Добавить вопрос</h2>
+            <form onSubmit={handleAdd} className="grid gap-2">
+              <Textarea value={text} onChange={e => setText(e.target.value)} placeholder="Введите вопрос" required />
+              {options.map((opt, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input type="radio" checked={correct===i} onChange={()=>setCorrect(i)} title="Правильный ответ" />
+                  <Input value={opt} onChange={e=>setOptions(prev=>prev.map((v,j)=>j===i?e.target.value:v))} placeholder={`Вариант ${i+1}`} />
+                  <Button type="button" onClick={()=>removeOption(i)}>Удалить</Button>
                 </div>
-                {options.map((opt, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="correct"
-                      className="h-4 w-4"
-                      checked={correct === i}
-                      onChange={() => setCorrect(i)}
-                      disabled={opt.trim() === ""}
-                      title="Правильный ответ"
-                    />
-                    <Input
-                      value={opt}
-                      onChange={e => setOptions(prev => prev.map((v, idx) => (idx === i ? e.target.value : v)))}
-                      placeholder={`Вариант ${i + 1}`}
-                    />
-                    <Button type="button" variant="secondary" onClick={() => removeOption(i)}>
-                      Удалить
-                    </Button>
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <Button type="submit" disabled={!canSubmit}>
-                  Сохранить вопрос
-                </Button>
-              </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              ))}
+              <Button type="button" onClick={addOption}>Добавить вариант</Button>
+              <Button type="submit" disabled={!canSubmit}>Сохранить вопрос</Button>
             </form>
           </section>
 
-          <section className="rounded-xl border bg-white p-4">
-            <h2 className="mb-3 text-lg font-medium">Назначить тестирование студенту</h2>
-            <form
-              onSubmit={async e => {
-                e.preventDefault();
-                setAssignMsg(null);
+          {/* Назначение теста */}
+          <section className="border p-4 rounded-xl bg-white">
+            <h2 className="text-lg font-semibold mb-2">Назначить тест студенту</h2>
+            <form onSubmit={async e=>{
+              e.preventDefault();
+              try {
                 const res = await fetch("/api/teacher/assignments", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ testId, studentId: assignStudentId, dueAt: assignDueAt || null }),
+                  method:"POST",
+                  headers:{"Content-Type":"application/json"}, 
+                  body: JSON.stringify({ testId, studentId: assignStudentId, dueAt: assignDueAt||null })
                 });
-                if (res.ok) setAssignMsg("Назначение создано");
-                else {
-                  const j = await res.json().catch(() => ({}));
-                  setAssignMsg(j?.error || "Ошибка назначения");
-                }
-              }}
-              className="grid gap-3 md:max-w-xl"
-            >
-              <label className="grid gap-1">
-                <span className="text-sm text-gray-700">Студент</span>
-                <select
-                  value={assignStudentId}
-                  onChange={e => setAssignStudentId(e.target.value)}
-                  className="rounded-md border px-3 py-2 text-sm"
-                >
-                  {students.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1">
-                <span className="text-sm text-gray-700">Срок (необязательно)</span>
-                <Input type="datetime-local" value={assignDueAt} onChange={e => setAssignDueAt(e.target.value)} />
-              </label>
-              <div className="flex items-center gap-3">
-                <Button type="submit">Назначить</Button>
-                {assignMsg && <span className="text-sm text-gray-600">{assignMsg}</span>}
-              </div>
+                setAssignMsg(res.ok ? "Назначение создано" : "Ошибка при назначении");
+              } catch (err) { console.error(err); }
+            }} className="grid gap-2">
+              <select value={assignStudentId} onChange={e=>setAssignStudentId(e.target.value)}>
+                {students.map(s=> <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <Input type="datetime-local" value={assignDueAt} onChange={e=>setAssignDueAt(e.target.value)} />
+              <Button type="submit">Назначить</Button>
+              {assignMsg && <span className="text-sm text-gray-600">{assignMsg}</span>}
             </form>
           </section>
 
-          <section className="rounded-xl border bg-white p-4">
-            <h2 className="mb-3 text-lg font-medium">Вопросы</h2>
-            {questions.length === 0 ? (
-              <div className="text-sm text-gray-600">Пока нет вопросов</div>
-            ) : (
-              <QuestionList testId={testId} items={questions} onUpdate={setQuestions} />
+          {/* Статус студентов */}
+          <section className="border p-4 rounded-xl bg-white">
+            <h2 className="text-lg font-semibold mb-2">Статус теста</h2>
+            {statusLoading ? <div>Загрузка статуса студентов...</div> : (
+              <div className="space-y-2">
+                <div>
+                  <h3 className="font-medium text-gray-700">Не начат</h3>
+                  <ul className="ml-4 list-disc">
+                    {studentStatus.filter(s => s.status==="ASSIGNED").map(s => (
+                      <li key={`${s.id}-${s.timestamp}`} className="text-gray-500">{s.name}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-medium text-orange-700">В процессе</h3>
+                  <ul className="ml-4 list-disc">
+                    {studentStatus.filter(s => s.status==="IN_PROGRESS").map(s => (
+                      <li key={`${s.id}-${s.timestamp}`} className="text-orange-500">{s.name}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-medium text-green-700">Сдано</h3>
+                  <ul className="ml-4 list-disc">
+                    {studentStatus.filter(s => s.status==="COMPLETED").map(s => (
+                      <li key={`${s.id}-${s.timestamp}`} className="text-green-600">{s.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             )}
           </section>
         </>
       )}
     </div>
-  );
-}
-
-function QuestionList({
-  testId,
-  items,
-  onUpdate,
-}: {
-  testId: string;
-  items: QuestionItem[];
-  onUpdate: (items: QuestionItem[]) => void;
-}) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [text, setText] = useState("");
-  const [options, setOptions] = useState<string[]>([]);
-  const [correct, setCorrect] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const startEdit = (q: QuestionItem) => {
-    setEditingId(q.id);
-    setText(q.text);
-    setOptions((q.options ?? []).slice());
-    setCorrect(q.correctIndex ?? null);
-  };
-  const cancel = () => {
-    setEditingId(null);
-    setText("");
-    setOptions([]);
-    setCorrect(null);
-  };
-  const addOpt = () => setOptions(prev => [...prev, ""]);
-  const rmOpt = (i: number) => {
-    setOptions(prev => prev.filter((_, idx) => idx !== i));
-    if (correct === i) setCorrect(null);
-    if (typeof correct === "number" && i < correct) setCorrect(correct - 1);
-  };
-  const canSave = text.trim().length > 0 && (options.filter(o => o.trim()).length === 0 || (correct != null));
-
-  const save = async () => {
-    if (!editingId) return;
-    setSaving(true);
-    try {
-      const filled = options.map(o => o.trim()).filter(Boolean);
-      const body: any = { text };
-      if (filled.length > 0) {
-        body.options = filled;
-        body.correctIndex = correct;
-      } else {
-        body.options = null;
-        body.correctIndex = null;
-      }
-      const res = await fetch(`/api/teacher/tests/${testId}/questions/${editingId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j?.error || "Не удалось сохранить");
-      onUpdate(items.map(it => (it.id === editingId ? j.item : it)));
-      cancel();
-    } finally {
-      setSaving(false);
-    }
-  };
-  const del = async (id: string) => {
-    if (!confirm("Удалить вопрос?")) return;
-    const res = await fetch(`/api/teacher/tests/${testId}/questions/${id}`, { method: "DELETE" });
-    if (res.ok) onUpdate(items.filter(i => i.id !== id));
-  };
-
-  return (
-    <ol className="space-y-3">
-      {items.map((q, idx) => (
-        <li key={q.id} className="rounded-lg border p-3">
-          <div className="mb-1 flex items-center justify-between text-sm text-gray-500">
-            <span>Вопрос {idx + 1}</span>
-            {editingId === q.id ? (
-              <span className="text-xs text-gray-400">Режим редактирования</span>
-            ) : (
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={() => startEdit(q)}>
-                  Изменить
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => del(q.id)}>
-                  Удалить
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {editingId === q.id ? (
-            <div className="grid gap-2">
-              <Textarea value={text} onChange={e => setText(e.target.value)} />
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">Варианты (можно оставить пустыми)</span>
-                  <Button variant="secondary" size="sm" type="button" onClick={addOpt}>
-                    Добавить вариант
-                  </Button>
-                </div>
-                {options.map((o, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name={`correct-${q.id}`}
-                      className="h-4 w-4"
-                      checked={correct === i}
-                      onChange={() => setCorrect(i)}
-                      disabled={o.trim() === ""}
-                    />
-                    <Input value={o} onChange={e => setOptions(prev => prev.map((v, idx) => (idx === i ? e.target.value : v)))} />
-                    <Button variant="secondary" size="sm" type="button" onClick={() => rmOpt(i)}>
-                      Удалить
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={save} disabled={!canSave || saving}>
-                  Сохранить
-                </Button>
-                <Button size="sm" variant="secondary" onClick={cancel}>
-                  Отменить
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="font-medium">{q.text}</div>
-              {q.options && q.options.length > 0 && (
-                <ul className="mt-2 list-decimal pl-6 text-sm">
-                  {q.options.map((o, i) => (
-                    <li key={i} className={q.correctIndex === i ? "font-semibold text-green-700" : undefined}>
-                      {o}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-        </li>
-      ))}
-    </ol>
   );
 }
