@@ -7,7 +7,7 @@ type Resp = { items: CourseVM[] };
 
 export default function CatalogPage() {
   const [q, setQ] = useState("");
-  const [mine, setMine] = useState(false);
+  const mine = false;
   const [items, setItems] = useState<CourseVM[] | null>(null);
   const [loading, setLoading] = useState(false);
 

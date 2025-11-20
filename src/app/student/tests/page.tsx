@@ -20,8 +20,8 @@ export default function StudentTestsPage() {
         if (!r.ok) throw new Error("Не удалось загрузить назначения");
         const j: { data: Item[] } = await r.json();
         if (!cancelled) setItems(j.data ?? []);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Ошибка загрузки");
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Ошибка загрузки");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -64,4 +64,3 @@ export default function StudentTestsPage() {
     </div>
   );
 }
-
