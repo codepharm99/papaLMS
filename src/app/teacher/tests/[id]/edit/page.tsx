@@ -7,7 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-type TestItem = { id: string; title: string; description?: string; createdAt: number };
+type TestItem = {
+  id: string;
+  title: string;
+  description?: string | null;
+  publicCode?: string | null;
+  publishedAt?: number | null;
+  createdAt: number;
+};
 type QuestionItem = { id: string; testId: string; text: string; options?: string[]; correctIndex?: number; createdAt: number };
 type StudentItem = { id: string; name: string };
 type StudentStatus = { id: string; name: string; status: "ASSIGNED" | "IN_PROGRESS" | "COMPLETED"; timestamp: number };
@@ -23,6 +30,8 @@ export default function EditTestPage() {
   const [studentStatus, setStudentStatus] = useState<StudentStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [publishLoading, setPublishLoading] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const [text, setText] = useState("");
   const [options, setOptions] = useState<string[]>([""]);
@@ -93,7 +102,7 @@ export default function EditTestPage() {
   const removeOption = (idx: number) => {
     setOptions(prev => prev.filter((_, i) => i !== idx));
     if (correct === idx) setCorrect(null);
-    if (correct && idx < correct) setCorrect(correct - 1);
+    if (correct !== null && idx < correct) setCorrect(correct - 1);
   };
 
   const canSubmit = useMemo(() => {
@@ -103,9 +112,33 @@ export default function EditTestPage() {
     return text.trim().length > 0 && correct >= 0 && correct < filled.length;
   }, [text, options, correct]);
 
+  const isPublished = !!test?.publishedAt;
+  const shareLink = useMemo(() => {
+    if (!test?.publicCode) return null;
+    if (typeof window === "undefined") return null;
+    return `${window.location.origin}/tests/${test.publicCode}`;
+  }, [test?.publicCode]);
+
+  const handlePublish = async () => {
+    if (!testId) return;
+    setPublishError(null);
+    setPublishLoading(true);
+    try {
+      const res = await fetch(`/api/teacher/tests/${testId}/publish`, { method: "POST" });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || "Не удалось опубликовать");
+      setTest(j.item);
+    } catch (e: unknown) {
+      setPublishError(e instanceof Error ? e.message : "Ошибка публикации");
+    } finally {
+      setPublishLoading(false);
+    }
+  };
+
   // --- Добавление вопроса ---
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPublished) return;
     const filled = options.map(o => o.trim()).filter(Boolean);
     const body: QuestionPayload = { text };
     if (filled.length) {
@@ -133,21 +166,59 @@ export default function EditTestPage() {
 
       {loading ? <div>Загрузка теста...</div> : (
         <>
+          {/* Публикация и ссылка */}
+          <section className="border p-4 rounded-xl bg-white space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Публикация</h2>
+                <p className="text-sm text-gray-600">
+                  После публикации редактирование вопросов будет заблокировано. Ссылка открыта для всех.
+                </p>
+              </div>
+              <Button variant="secondary" onClick={handlePublish} disabled={publishLoading || isPublished}>
+                {isPublished ? "Уже опубликован" : publishLoading ? "Публикую..." : "Опубликовать"}
+              </Button>
+            </div>
+            {publishError && <div className="text-sm text-red-600">{publishError}</div>}
+            {isPublished && shareLink && (
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] items-center">
+                <div className="grid gap-2">
+                  <div className="text-sm text-gray-700">Публичная ссылка</div>
+                  <div className="flex gap-2">
+                    <Input readOnly value={shareLink} />
+                    <Button type="button" onClick={() => navigator.clipboard.writeText(shareLink)}>Скопировать</Button>
+                  </div>
+                </div>
+                <div className="justify-self-end rounded-lg border bg-white p-2">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareLink)}`}
+                    alt="QR-код для ссылки"
+                    className="h-[180px] w-[180px]"
+                  />
+                </div>
+              </div>
+            )}
+          </section>
+
           {/* Добавление вопросов */}
           <section className="border p-4 rounded-xl bg-white">
             <h2 className="text-lg font-semibold mb-2">Добавить вопрос</h2>
-            <form onSubmit={handleAdd} className="grid gap-2">
-              <Textarea value={text} onChange={e => setText(e.target.value)} placeholder="Введите вопрос" required />
-              {options.map((opt, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <input type="radio" checked={correct===i} onChange={()=>setCorrect(i)} title="Правильный ответ" />
-                  <Input value={opt} onChange={e=>setOptions(prev=>prev.map((v,j)=>j===i?e.target.value:v))} placeholder={`Вариант ${i+1}`} />
-                  <Button type="button" onClick={()=>removeOption(i)}>Удалить</Button>
-                </div>
-              ))}
-              <Button type="button" onClick={addOption}>Добавить вариант</Button>
-              <Button type="submit" disabled={!canSubmit}>Сохранить вопрос</Button>
-            </form>
+            {isPublished ? (
+              <div className="text-sm text-gray-600">Тест опубликован. Вопросы больше редактировать нельзя.</div>
+            ) : (
+              <form onSubmit={handleAdd} className="grid gap-2">
+                <Textarea value={text} onChange={e => setText(e.target.value)} placeholder="Введите вопрос" required />
+                {options.map((opt, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <input type="radio" checked={correct===i} onChange={()=>setCorrect(i)} title="Правильный ответ" />
+                    <Input value={opt} onChange={e=>setOptions(prev=>prev.map((v,j)=>j===i?e.target.value:v))} placeholder={`Вариант ${i+1}`} />
+                    <Button type="button" onClick={()=>removeOption(i)}>Удалить</Button>
+                  </div>
+                ))}
+                <Button type="button" onClick={addOption}>Добавить вариант</Button>
+                <Button type="submit" disabled={!canSubmit}>Сохранить вопрос</Button>
+              </form>
+            )}
           </section>
 
           {/* Назначение теста */}

@@ -14,7 +14,13 @@ export async function POST(req: Request, ctx: Params) {
   const { id } = await ctx.params;
   const res = await addQuestionToTest(me, id, { text, options, correctIndex });
   if ("error" in res) {
-    const statusMap: Record<string, number> = { FORBIDDEN: 403, TEST_NOT_FOUND: 404, TEXT_REQUIRED: 400, INVALID_OPTIONS: 400 };
+    const statusMap: Record<string, number> = {
+      FORBIDDEN: 403,
+      TEST_NOT_FOUND: 404,
+      TEXT_REQUIRED: 400,
+      INVALID_OPTIONS: 400,
+      PUBLISHED: 409,
+    };
     return NextResponse.json({ error: res.error }, { status: statusMap[res.error] ?? 400 });
   }
   return NextResponse.json({ ok: true, item: res.item });

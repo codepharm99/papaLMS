@@ -30,6 +30,9 @@ export type Material = {
   title: string;
   description?: string | null;
   url?: string | null;
+  description?: string | null;
+  publicCode?: string | null;
+  publishedAt?: number | null;
   createdAt: number;
 };
 
@@ -55,6 +58,8 @@ export type TestItem = {
   id: string;
   title: string;
   description?: string | null;
+  publicCode?: string | null;
+  publishedAt?: number | null;
   createdAt: number;
 };
 
@@ -418,7 +423,14 @@ function mapTeacherCourse(course: {
 
 export async function listTeacherTests(teacherId: string): Promise<TestItem[]> {
   const tests = await prisma.test.findMany({ where: { teacherId }, orderBy: { createdAt: "desc" } });
-  return tests.map(t => ({ id: t.id, title: t.title, description: t.description, createdAt: t.createdAt.getTime() }));
+  return tests.map(t => ({
+    id: t.id,
+    title: t.title,
+    description: t.description,
+    publicCode: t.publicCode,
+    publishedAt: t.publishedAt?.getTime() ?? null,
+    createdAt: t.createdAt.getTime(),
+  }));
 }
 
 export async function createTestForTeacher(
@@ -430,18 +442,29 @@ export async function createTestForTeacher(
   const description = data.description?.trim();
   if (!title) return { error: "TITLE_REQUIRED" };
   const t = await prisma.test.create({ data: { title, description, teacherId: teacher.id } });
-  return { ok: true, item: { id: t.id, title: t.title, description: t.description, createdAt: t.createdAt.getTime() } };
+  return {
+    ok: true,
+    item: {
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      publicCode: t.publicCode,
+      publishedAt: t.publishedAt?.getTime() ?? null,
+      createdAt: t.createdAt.getTime(),
+    },
+  };
 }
 
 export async function addQuestionToTest(
   teacher: User,
   testId: string,
   data: { text: string; options?: string[]; correctIndex?: number | null }
-): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "TEXT_REQUIRED" | "INVALID_OPTIONS" }> {
+): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "TEXT_REQUIRED" | "INVALID_OPTIONS" | "PUBLISHED" }> {
   if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
   const test = await prisma.test.findUnique({ where: { id: testId } });
   if (!test) return { error: "TEST_NOT_FOUND" };
   if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  if (test.publishedAt) return { error: "PUBLISHED" };
   const text = String(data.text ?? "").trim();
   if (!text) return { error: "TEXT_REQUIRED" };
   let options: string[] | null = null;
@@ -487,7 +510,14 @@ export async function listQuestionsForTest(
     correctIndex: q.correctIndex ?? null,
     createdAt: q.createdAt.getTime(),
   }));
-  const testItem: TestItem = { id: test.id, title: test.title, description: test.description, createdAt: test.createdAt.getTime() };
+  const testItem: TestItem = {
+    id: test.id,
+    title: test.title,
+    description: test.description,
+    publicCode: test.publicCode,
+    publishedAt: test.publishedAt?.getTime() ?? null,
+    createdAt: test.createdAt.getTime(),
+  };
   return { ok: true, test: testItem, items };
 }
 
@@ -496,11 +526,12 @@ export async function updateQuestionInTest(
   testId: string,
   questionId: string,
   data: { text?: string; options?: string[] | null; correctIndex?: number | null }
-): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "QUESTION_NOT_FOUND" | "INVALID_OPTIONS" | "TEXT_REQUIRED" }> {
+): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "QUESTION_NOT_FOUND" | "INVALID_OPTIONS" | "TEXT_REQUIRED" | "PUBLISHED" }> {
   if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
   const test = await prisma.test.findUnique({ where: { id: testId } });
   if (!test) return { error: "TEST_NOT_FOUND" };
   if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  if (test.publishedAt) return { error: "PUBLISHED" };
   const q = await prisma.question.findUnique({ where: { id: questionId } });
   if (!q || q.testId !== testId) return { error: "QUESTION_NOT_FOUND" };
 
@@ -545,15 +576,108 @@ export async function deleteQuestionFromTest(
   teacher: User,
   testId: string,
   questionId: string
-): Promise<{ ok: true } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "QUESTION_NOT_FOUND" }> {
+): Promise<{ ok: true } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "QUESTION_NOT_FOUND" | "PUBLISHED" }> {
   if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
   const test = await prisma.test.findUnique({ where: { id: testId } });
   if (!test) return { error: "TEST_NOT_FOUND" };
   if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  if (test.publishedAt) return { error: "PUBLISHED" };
   const q = await prisma.question.findUnique({ where: { id: questionId } });
   if (!q || q.testId !== testId) return { error: "QUESTION_NOT_FOUND" };
   await prisma.question.delete({ where: { id: questionId } });
   return { ok: true };
+}
+
+function generatePublicCode() {
+  return randomBytes(3).toString("hex").toUpperCase();
+}
+
+export async function publishTest(
+  teacher: User,
+  testId: string
+): Promise<{ ok: true; item: TestItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) return { error: "TEST_NOT_FOUND" };
+  if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+
+  const publicCode = test.publicCode ?? generatePublicCode();
+  const publishedAt = test.publishedAt ?? new Date();
+
+  const updated = await prisma.test.update({
+    where: { id: testId },
+    data: { publicCode, publishedAt },
+  });
+
+  return {
+    ok: true,
+    item: {
+      id: updated.id,
+      title: updated.title,
+      description: updated.description,
+      publicCode: updated.publicCode,
+      publishedAt: updated.publishedAt?.getTime() ?? null,
+      createdAt: updated.createdAt.getTime(),
+    },
+  };
+}
+
+export async function getPublishedTestByCode(
+  code: string
+): Promise<
+  | {
+      ok: true;
+      test: { id: string; title: string; description?: string | null };
+      questions: Array<{ id: string; text: string; options?: string[] | null }>;
+    }
+  | { error: "NOT_FOUND" }
+> {
+  const test = await prisma.test.findFirst({
+    where: { publicCode: code, publishedAt: { not: null } },
+  });
+  if (!test) return { error: "NOT_FOUND" };
+  const qs = await prisma.question.findMany({ where: { testId: test.id }, orderBy: { createdAt: "asc" } });
+  const questions = qs.map(q => ({ id: q.id, text: q.text, options: (q.options as unknown as string[] | null) ?? null }));
+  return { ok: true, test: { id: test.id, title: test.title, description: test.description }, questions };
+}
+
+export async function submitGuestAttempt(
+  code: string,
+  name: string,
+  answers: Record<string, number | string | null>
+): Promise<{ ok: true; score: number; total: number } | { error: "NOT_FOUND" | "NAME_REQUIRED" }> {
+  const testRow = await prisma.test.findFirst({
+    where: { publicCode: code, publishedAt: { not: null } },
+  });
+  if (!testRow) return { error: "NOT_FOUND" };
+  const cleanName = normalizeName(name);
+  if (!cleanName) return { error: "NAME_REQUIRED" };
+
+  const qs = await prisma.question.findMany({ where: { testId: testRow.id } });
+  let score = 0;
+  let total = 0;
+  const storedAnswers: Record<string, unknown> = {};
+  for (const q of qs) {
+    const opts = (q.options as unknown as string[] | null) ?? null;
+    if (opts && typeof q.correctIndex === "number") {
+      total += 1;
+      const choice = answers[q.id];
+      storedAnswers[q.id] = choice ?? null;
+      if (typeof choice === "number" && choice === q.correctIndex) score += 1;
+    }
+  }
+
+  await prisma.guestTestAttempt.create({
+    data: {
+      testId: testRow.id,
+      name: cleanName,
+      score,
+      total,
+      answers: storedAnswers,
+    },
+  });
+
+  return { ok: true, score, total };
 }
 
 export async function listStudents(): Promise<Array<{ id: string; name: string }>> {

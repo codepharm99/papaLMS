@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
-type TestItem = { id: string; title: string; description?: string | null; createdAt: number };
+type TestItem = { id: string; title: string; description?: string | null; publicCode?: string | null; publishedAt?: number | null; createdAt: number };
 
 export default function TeacherTestsPage() {
   const [tests, setTests] = useState<TestItem[]>([]);

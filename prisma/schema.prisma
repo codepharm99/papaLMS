@@ -91,9 +91,12 @@ model Test {
   teacher     User           @relation("TeacherTests", fields: [teacherId], references: [id])
   title       String
   description String?
+  publicCode  String?        @unique
+  publishedAt DateTime?
   createdAt   DateTime       @default(now())
   questions   Question[]
   assignments TestAssignment[]
+  guestAttempts GuestTestAttempt[]
 }
 
 model Question {
@@ -118,4 +121,15 @@ model TestAssignment {
   dueAt         DateTime?
   status        String   @default("ASSIGNED")
   createdAt     DateTime @default(now())
+}
+
+model GuestTestAttempt {
+  id        String   @id @default(cuid())
+  testId    String
+  test      Test     @relation(fields: [testId], references: [id])
+  name      String
+  score     Int
+  total     Int
+  answers   Json?
+  createdAt DateTime @default(now())
 }
