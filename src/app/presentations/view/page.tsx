@@ -79,9 +79,7 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
   const current = data.slides[safeIndex] || {};
   const hasImage = Boolean(current.imageDataUrl);
   const hasText = Boolean(current.text);
-  const layoutVariant = safeIndex % 2; // 0: img left, 1: img right
-  const isColumn = false;
-  const imageFirst = layoutVariant === 0;
+  const imageLeft = safeIndex % 2 === 0; // чередуем слева/справа
 
   return (
     <main className="flex min-h-screen flex-col gap-4 bg-white text-gray-900">
@@ -116,13 +114,13 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
         <div className="flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 shadow-xl">
           <div
             className={`flex h-full flex-col gap-6 p-6 md:gap-10 ${
-              hasImage && hasText ? (imageFirst ? "md:flex-row" : "md:flex-row-reverse") : "md:flex-col"
+              hasImage && hasText ? "md:flex-row" : "md:flex-col"
             } items-stretch justify-start`}
           >
             {hasImage && (
               <div
                 className={`flex w-full items-center justify-center md:w-1/2 ${
-                  hasText ? (imageFirst ? "order-1" : isColumn ? "order-1" : "order-2") : ""
+                  hasText ? (imageLeft ? "order-1" : "order-2") : ""
                 }`}
               >
                 <Image
@@ -138,7 +136,7 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
             {hasText && (
               <div
                 className={`flex w-full md:w-1/2 ${
-                  hasImage ? (imageFirst ? (isColumn ? "order-2" : "order-1") : "order-1") : ""
+                  hasImage ? (imageLeft ? "order-2" : "order-1") : ""
                 }`}
               >
                 <div className="w-full max-w-3xl whitespace-pre-line text-left text-base leading-relaxed text-gray-900 md:text-lg">

@@ -36,9 +36,7 @@ export default function PresentationsTool() {
   const liveSlide = liveSlides[liveIndex] || null;
   const liveHasImage = Boolean(liveSlide?.imageDataUrl);
   const liveHasText = Boolean(liveSlide?.text);
-  const liveVariant = liveIndex % 2; // 0: img left, 1: img right
-  const liveIsColumn = false;
-  const liveImageFirst = liveVariant === 0;
+  const liveImageLeft = liveIndex % 2 === 0; // чередуем слева/справа
 
   const updateSlideText = (id: string, text: string) => {
     setSlides(prev => prev.map(s => (s.id === id ? { ...s, text } : s)));
@@ -360,16 +358,12 @@ export default function PresentationsTool() {
             <div className="flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 shadow-xl">
               <div
                 className={`flex h-full flex-col gap-6 p-6 md:gap-10 ${
-                  liveHasImage && liveHasText
-                    ? liveImageFirst
-                      ? "md:flex-row"
-                      : "md:flex-row-reverse"
-                    : "md:flex-col"
+                  liveHasImage && liveHasText ? "md:flex-row" : "md:flex-col"
                 } items-stretch justify-start`}>
                 {liveHasImage && (
                   <div
                     className={`flex w-full items-center justify-center md:w-1/2 ${
-                      liveHasText ? (liveImageFirst ? "order-1" : liveIsColumn ? "order-1" : "order-2") : ""
+                      liveHasText ? (liveImageLeft ? "order-1" : "order-2") : ""
                     }`}>
                     <Image
                       src={liveSlide?.imageDataUrl || ""}
@@ -384,7 +378,7 @@ export default function PresentationsTool() {
                 {liveHasText && (
                   <div
                     className={`flex w-full md:w-1/2 ${
-                      liveHasImage ? (liveImageFirst ? (liveIsColumn ? "order-2" : "order-1") : "order-1") : ""
+                      liveHasImage ? (liveImageLeft ? "order-2" : "order-1") : ""
                     }`}>
                     <div
                       className="w-full max-w-3xl whitespace-pre-line text-left text-base leading-relaxed text-gray-900 md:text-lg"
