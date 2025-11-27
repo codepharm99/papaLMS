@@ -43,6 +43,8 @@ export default function PresentationsTool() {
   const [detailsLoadingId, setDetailsLoadingId] = useState<string | null>(null);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [presentations, setPresentations] = useState<Presentation[]>([]);
+  const [savedLoading, setSavedLoading] = useState(false);
+  const [savedError, setSavedError] = useState<string | null>(null);
   const [liveSlides, setLiveSlides] = useState<SlideDraft[]>([]);
   const [livePresentation, setLivePresentation] = useState<Presentation | null>(null);
   const [liveIndex, setLiveIndex] = useState(0);
@@ -214,7 +216,59 @@ export default function PresentationsTool() {
     }
   };
 
-  const savePresentation = () => {
+  const deletePresentation = async (id: string) => {
+    try {
+      const res = await fetch(`/api/teacher/presentations/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(typeof data?.error === "string" ? data.error : "Не удалось удалить презентацию");
+      }
+      setPresentations(prev => prev.filter(p => p.id !== id));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Не удалось удалить презентацию");
+    }
+  };
+
+  const loadSaved = async () => {
+    setSavedLoading(true);
+    setSavedError(null);
+    try {
+      const res = await fetch("/api/teacher/presentations", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof data?.error === "string" ? data.error : "Не удалось загрузить презентации");
+      }
+      const items: Presentation[] = Array.isArray(data?.items)
+        ? data.items.map((p: any) => ({
+            id: String(p.id),
+            title: typeof p.title === "string" ? p.title : "Без названия",
+            createdAt: Number(p.createdAt) || Date.now(),
+            slides: Array.isArray(p.slides)
+              ? p.slides.map((s: any) => ({
+                  id: makeId(),
+                  heading: pickHeading(s),
+                  details: pickDetails(s),
+                  imageDataUrl: typeof s?.imageDataUrl === "string" ? s.imageDataUrl : undefined,
+                  imageAuthorName: typeof s?.imageAuthorName === "string" ? s.imageAuthorName : undefined,
+                  imageAuthorUrl: typeof s?.imageAuthorUrl === "string" ? s.imageAuthorUrl : undefined,
+                }))
+              : [],
+          }))
+        : [];
+      setPresentations(items);
+    } catch (e: unknown) {
+      setSavedError(e instanceof Error ? e.message : "Ошибка загрузки презентаций");
+    } finally {
+      setSavedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSaved();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const savePresentation = async () => {
     const safeTitle = presentationTitle.trim() || "Без названия";
     const preparedSlides = slides
       .map(s => ({
@@ -227,9 +281,37 @@ export default function PresentationsTool() {
       alert("Добавьте хотя бы один слайд с заголовком, текстом или изображением");
       return;
     }
-    const created: Presentation = { id: makeId(), title: safeTitle, slides: preparedSlides, createdAt: Date.now() };
-    setPresentations(prev => [created, ...prev]);
-    resetPresentationDraft();
+    try {
+      const res = await fetch("/api/teacher/presentations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: safeTitle, slides: preparedSlides }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(typeof data?.error === "string" ? data.error : "Не удалось сохранить презентацию");
+      }
+      const item = data?.item;
+      const created: Presentation = {
+        id: String(item?.id || makeId()),
+        title: typeof item?.title === "string" ? item.title : safeTitle,
+        createdAt: Number(item?.createdAt) || Date.now(),
+        slides: Array.isArray(item?.slides)
+          ? item.slides.map((s: any) => ({
+              id: makeId(),
+              heading: pickHeading(s),
+              details: pickDetails(s),
+              imageDataUrl: typeof s?.imageDataUrl === "string" ? s.imageDataUrl : undefined,
+              imageAuthorName: typeof s?.imageAuthorName === "string" ? s.imageAuthorName : undefined,
+              imageAuthorUrl: typeof s?.imageAuthorUrl === "string" ? s.imageAuthorUrl : undefined,
+            }))
+          : preparedSlides.map(s => ({ ...s, id: makeId() })),
+      };
+      setPresentations(prev => [created, ...prev]);
+      resetPresentationDraft();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Не удалось сохранить презентацию");
+    }
   };
 
   const startPresentation = (p: Presentation) => {
@@ -338,7 +420,7 @@ export default function PresentationsTool() {
         <div className="text-xs uppercase tracking-wide text-gray-500">Инструменты преподавателя</div>
         <h1 className="text-2xl font-semibold">Генератор презентаций</h1>
         <p className="text-sm text-gray-600">
-          Черновики хранятся только в этом браузере. Для показа нажмите «Показать студентам» — откроется полноэкранный режим без всплывающих окон.
+          Черновики сохраняются на сервере и привязаны к учётке преподавателя. Для показа нажмите «Показать студентам» — откроется полноэкранный режим без всплывающих окон.
         </p>
       </div>
 
@@ -447,12 +529,11 @@ export default function PresentationsTool() {
                     <div className="text-[11px] text-gray-500">
                       Фото {slide.imageAuthorUrl ? (
                         <a className="underline" href={slide.imageAuthorUrl} target="_blank" rel="noreferrer">
-                          {slide.imageAuthorName || "на Unsplash"}
+                          {slide.imageAuthorName || "на Pexels"}
                         </a>
                       ) : (
-                        slide.imageAuthorName || "Unsplash"
-                      )}{" "}
-                      на Unsplash
+                        slide.imageAuthorName || "Pexels"
+                      )}
                     </div>
                   )}
                 </div>
@@ -524,10 +605,18 @@ export default function PresentationsTool() {
         </div>
       </div>
 
-      {presentations.length > 0 && (
-        <div className="rounded-2xl border bg-white p-4 space-y-2 shadow-sm">
-          <div className="text-sm font-semibold">Черновики презентаций</div>
-          <div className="text-xs text-gray-500">Локально в браузере (исчезнут после перезагрузки).</div>
+      <div className="rounded-2xl border bg-white p-4 space-y-2 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-semibold">Сохранённые презентации</div>
+            <div className="text-xs text-gray-500">Хранятся на сервере для этого преподавателя.</div>
+          </div>
+          {savedLoading && <div className="text-xs text-gray-500">Загрузка…</div>}
+        </div>
+        {savedError && <div className="text-xs text-red-600">{savedError}</div>}
+        {presentations.length === 0 && !savedLoading ? (
+          <div className="text-sm text-gray-600">Пока нет сохранённых презентаций.</div>
+        ) : (
           <ul className="space-y-2">
             {presentations.map(p => (
               <li key={p.id} className="rounded-xl border p-3">
@@ -569,7 +658,7 @@ export default function PresentationsTool() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setPresentations(prev => prev.filter(x => x.id !== p.id))}
+                      onClick={() => deletePresentation(p.id)}
                       className="rounded-xl border px-3 py-2 text-sm hover:border-gray-400"
                     >
                       Удалить
@@ -579,8 +668,8 @@ export default function PresentationsTool() {
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        )}
+      </div>
 
       {livePresentation && liveSlides.length > 0 && (
         <div className="fixed inset-0 z-50 bg-white text-gray-900">
@@ -642,12 +731,11 @@ export default function PresentationsTool() {
                               rel="noreferrer"
                               className="underline"
                             >
-                              {liveSlide.imageAuthorName || "на Unsplash"}
+                              {liveSlide.imageAuthorName || "на Pexels"}
                             </a>
                           ) : (
-                            liveSlide?.imageAuthorName || "Unsplash"
-                          )}{" "}
-                          на Unsplash
+                            liveSlide?.imageAuthorName || "Pexels"
+                          )}
                         </div>
                       )}
                     </div>

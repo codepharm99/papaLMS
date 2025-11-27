@@ -152,12 +152,11 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
                           rel="noreferrer"
                           className="underline"
                         >
-                          {current.imageAuthorName || "на Unsplash"}
+                          {current.imageAuthorName || "на Pexels"}
                         </a>
                       ) : (
-                        current.imageAuthorName || "Unsplash"
-                      )}{" "}
-                      на Unsplash
+                        current.imageAuthorName || "Pexels"
+                      )}
                     </div>
                   )}
                 </div>

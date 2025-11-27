@@ -9,7 +9,7 @@ const DEFAULT_MODEL = process.env.OLLAMA_MODEL || "mistral:7b";
 const BASE_URL = (process.env.OLLAMA_BASE_URL || "http://100.81.115.30:11434").replace(/\/+$/, "");
 const PROMPT_PATH =
   process.env.PRESENTATION_PROMPT_PATH || path.join(process.cwd(), "prompts", "presentation.md");
-const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY || "";
+const PEXELS_KEY = process.env.PEXELS_API_KEY || "";
 
 type NormalizedSlide = {
   heading: string;
@@ -89,61 +89,78 @@ function renderPrompt(template: string, ctx: { topic: string; slides: number }) 
   });
 }
 
-type UnsplashPick = {
-  url: string;
-  authorName?: string;
-  authorUrl?: string;
-  downloadLocation?: string;
-};
+type PexelsPick = { url: string; authorName?: string; authorUrl?: string };
 
-async function fetchUnsplashImage(query: string): Promise<UnsplashPick | null> {
-  if (!UNSPLASH_KEY || !query) return null;
-
+async function fetchPexelsByQuery(query: string): Promise<PexelsPick[]> {
+  if (!PEXELS_KEY || !query) return [];
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
-    const url = new URL("https://api.unsplash.com/search/photos");
+    const url = new URL("https://api.pexels.com/v1/search");
     url.searchParams.set("query", query);
-    url.searchParams.set("per_page", "1");
+    url.searchParams.set("per_page", "8");
     url.searchParams.set("orientation", "landscape");
-    url.searchParams.set("client_id", UNSPLASH_KEY);
-
-    const res = await fetch(url.toString(), { signal: controller.signal, headers: { Accept: "application/json" } });
+    url.searchParams.set("size", "large");
+    const res = await fetch(url.toString(), {
+      signal: controller.signal,
+      headers: { Authorization: PEXELS_KEY },
+    });
     clearTimeout(timeout);
-    if (!res.ok) return null;
+    if (!res.ok) return [];
     const data = (await res.json()) as {
-      results?: Array<{
-        id?: string;
-        urls?: { regular?: string; full?: string };
-        user?: { name?: string; links?: { html?: string } };
-        links?: { html?: string; download_location?: string };
+      photos?: Array<{
+        src?: { large?: string; large2x?: string; medium?: string; landscape?: string };
+        photographer?: string;
+        photographer_url?: string;
       }>;
     };
-    const first = data?.results?.[0];
-    if (!first) return null;
-    const urlPick = pickString(first.urls?.regular || first.urls?.full);
-    if (!urlPick) return null;
-    return {
-      url: urlPick,
-      authorName: pickString(first.user?.name),
-      authorUrl: pickString(first.user?.links?.html || first.links?.html),
-      downloadLocation: pickString(first.links?.download_location),
-    };
+    return (
+      data?.photos
+        ?.map(p => {
+          const urlPick = pickString(
+            p.src?.large2x || p.src?.landscape || p.src?.large || p.src?.medium
+          );
+          if (!urlPick) return null;
+          return {
+            url: urlPick,
+            authorName: pickString(p.photographer),
+            authorUrl: pickString(p.photographer_url),
+          } satisfies PexelsPick;
+        })
+        .filter(Boolean) as PexelsPick[]
+    ) || [];
   } catch {
     clearTimeout(timeout);
-    return null;
+    return [];
   }
 }
 
-async function registerUnsplashDownload(downloadLocation?: string) {
-  if (!UNSPLASH_KEY || !downloadLocation) return;
-  try {
-    const url = new URL(downloadLocation);
-    url.searchParams.set("client_id", UNSPLASH_KEY);
-    await fetch(url.toString(), { method: "GET" });
-  } catch {
-    // ignore
+const pexelsCache = new Map<string, PexelsPick[]>();
+const usedImages = new Set<string>();
+
+async function pickPexelsImage(heading: string, topic: string): Promise<PexelsPick | null> {
+  if (!PEXELS_KEY) return null;
+  const queries = [
+    [heading, topic].filter(Boolean).join(", ").trim(),
+    heading.trim(),
+    topic.trim(),
+  ]
+    .map(q => q.slice(0, 120))
+    .filter(Boolean);
+
+  for (const query of queries) {
+    if (!pexelsCache.has(query)) {
+      const picks = await fetchPexelsByQuery(query);
+      pexelsCache.set(query, picks);
+    }
+    const picks = pexelsCache.get(query) || [];
+    const pick = picks.find(p => p.url && !usedImages.has(p.url));
+    if (pick) {
+      usedImages.add(pick.url);
+      return pick;
+    }
   }
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -192,23 +209,20 @@ export async function POST(req: Request) {
     const normalized = normalizePayload(parsed, topic);
     if (!normalized.slides.length) return NextResponse.json({ error: "NO_SLIDES" }, { status: 502 });
 
-    const slidesWithImages =
-      UNSPLASH_KEY && normalized.slides.length > 0
-        ? await Promise.all(
-            normalized.slides.map(async (slide) => {
-              const heading = slide.heading || topic;
-              const image = await fetchUnsplashImage(heading.slice(0, 80));
-              if (!image) return slide;
-              await registerUnsplashDownload(image.downloadLocation);
-              return {
-                ...slide,
-                imageDataUrl: image.url,
-                imageAuthorName: image.authorName,
-                imageAuthorUrl: image.authorUrl,
-              };
-            })
-          )
-        : normalized.slides;
+    let slidesWithImages: NormalizedSlide[] = normalized.slides;
+    if (PEXELS_KEY && normalized.slides.length > 0) {
+      const enriched: NormalizedSlide[] = [];
+      for (const slide of normalized.slides) {
+        const heading = slide.heading || topic;
+        const image = await pickPexelsImage(heading, topic);
+        enriched.push(
+          image
+            ? { ...slide, imageDataUrl: image.url, imageAuthorName: image.authorName, imageAuthorUrl: image.authorUrl }
+            : slide
+        );
+      }
+      slidesWithImages = enriched;
+    }
 
     return NextResponse.json({ title: normalized.title, slides: slidesWithImages, model: DEFAULT_MODEL });
   } catch (e: unknown) {
