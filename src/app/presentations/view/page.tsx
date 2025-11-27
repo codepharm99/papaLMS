@@ -5,7 +5,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-type Slide = { text: string; imageDataUrl?: string };
+type Slide = {
+  heading?: string;
+  details?: string;
+  text?: string;
+  imageDataUrl?: string;
+  imageAuthorName?: string;
+  imageAuthorUrl?: string;
+};
 type Payload = { title: string; slides: Slide[] };
 
 function decodePayload(raw: string): Payload {
@@ -77,9 +84,12 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
 
   const safeIndex = Math.min(index, Math.max(0, data.slides.length - 1));
   const current = data.slides[safeIndex] || {};
+  const heading = current.heading || current.text || "";
+  const details = current.details || "";
   const hasImage = Boolean(current.imageDataUrl);
-  const hasText = Boolean(current.text);
+  const hasText = Boolean(heading || details);
   const imageLeft = safeIndex % 2 === 0; // чередуем слева/справа
+  const attribution = current.imageAuthorName || current.imageAuthorUrl;
 
   return (
     <main className="flex min-h-screen flex-col gap-4 bg-white text-gray-900">
@@ -110,7 +120,7 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pb-6 md:px-8">
+      <section className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-4 pb-6 md:px-8">
         <div className="flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 shadow-xl">
           <div
             className={`flex h-full flex-col gap-6 p-6 md:gap-10 ${
@@ -119,28 +129,49 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
           >
             {hasImage && (
               <div
-                className={`flex w-full items-center justify-center md:w-1/2 ${
+                className={`flex w-full items-center justify-center md:w-5/12 ${
                   hasText ? (imageLeft ? "order-1" : "order-2") : ""
                 }`}
               >
-                <Image
-                  src={current.imageDataUrl || ""}
-                  alt=""
-                  width={1400}
-                  height={900}
-                  unoptimized
-                  className="max-h-[70vh] w-full rounded-xl object-contain border border-gray-200 bg-white"
-                />
+                <div className="w-full space-y-2">
+                  <Image
+                    src={current.imageDataUrl || ""}
+                    alt=""
+                    width={1400}
+                    height={900}
+                    unoptimized
+                    className="max-h-[70vh] w-full rounded-xl object-contain border border-gray-200 bg-white"
+                  />
+                  {attribution && (
+                    <div className="text-xs text-gray-500">
+                      Фото{" "}
+                      {current.imageAuthorUrl ? (
+                        <a
+                          href={current.imageAuthorUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline"
+                        >
+                          {current.imageAuthorName || "на Unsplash"}
+                        </a>
+                      ) : (
+                        current.imageAuthorName || "Unsplash"
+                      )}{" "}
+                      на Unsplash
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {hasText && (
               <div
-                className={`flex w-full md:w-1/2 ${
+                className={`flex w-full md:w-7/12 ${
                   hasImage ? (imageLeft ? "order-2" : "order-1") : ""
                 }`}
               >
-                <div className="w-full max-w-3xl whitespace-pre-line text-left text-base leading-relaxed text-gray-900 md:text-lg">
-                  {current.text}
+                <div className="w-full max-w-3xl text-left text-base leading-relaxed text-gray-900 md:text-lg">
+                  {heading && <div className="mb-2 text-xl font-semibold md:text-2xl">{heading}</div>}
+                  {details && <div className="whitespace-pre-line">{details}</div>}
                 </div>
               </div>
             )}

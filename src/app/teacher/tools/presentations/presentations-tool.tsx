@@ -5,7 +5,14 @@ import { useEffect, useState } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useCurrentUser } from "@/components/user-context";
 
-type SlideDraft = { id: string; text: string; imageDataUrl?: string };
+type SlideDraft = {
+  id: string;
+  heading: string;
+  details?: string;
+  imageDataUrl?: string;
+  imageAuthorName?: string;
+  imageAuthorUrl?: string;
+};
 type Presentation = { id: string; title: string; slides: SlideDraft[]; createdAt: number };
 
 const makeId = () =>
@@ -26,7 +33,15 @@ export default function PresentationsTool() {
   const { user } = useCurrentUser();
 
   const [presentationTitle, setPresentationTitle] = useState("Новая презентация");
-  const [slides, setSlides] = useState<SlideDraft[]>([{ id: makeId(), text: "" }]);
+  const [slides, setSlides] = useState<SlideDraft[]>([{ id: makeId(), heading: "", details: "" }]);
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiSlidesCount, setAiSlidesCount] = useState(6);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiInfo, setAiInfo] = useState<string | null>(null);
+  const [aiModel, setAiModel] = useState<string | null>(null);
+  const [detailsLoadingId, setDetailsLoadingId] = useState<string | null>(null);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const [presentations, setPresentations] = useState<Presentation[]>([]);
   const [liveSlides, setLiveSlides] = useState<SlideDraft[]>([]);
   const [livePresentation, setLivePresentation] = useState<Presentation | null>(null);
@@ -35,11 +50,24 @@ export default function PresentationsTool() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const liveSlide = liveSlides[liveIndex] || null;
   const liveHasImage = Boolean(liveSlide?.imageDataUrl);
-  const liveHasText = Boolean(liveSlide?.text);
+  const pickHeading = (s: SlideDraft | any) =>
+    typeof s?.heading === "string" && s.heading.trim()
+      ? s.heading.trim()
+      : typeof s?.text === "string"
+        ? s.text.trim()
+        : "";
+  const pickDetails = (s: SlideDraft | any) => (typeof s?.details === "string" ? s.details.trim() : "");
+  const liveHasText = Boolean(pickHeading(liveSlide) || pickDetails(liveSlide));
+  const liveHeading = pickHeading(liveSlide);
+  const liveDetails = pickDetails(liveSlide);
   const liveImageLeft = liveIndex % 2 === 0; // чередуем слева/справа
 
-  const updateSlideText = (id: string, text: string) => {
-    setSlides(prev => prev.map(s => (s.id === id ? { ...s, text } : s)));
+  const updateSlideHeading = (id: string, heading: string) => {
+    setSlides(prev => prev.map(s => (s.id === id ? { ...s, heading } : s)));
+  };
+
+  const updateSlideDetails = (id: string, details: string) => {
+    setSlides(prev => prev.map(s => (s.id === id ? { ...s, details } : s)));
   };
 
   const updateSlideFile = async (id: string, file: File | null) => {
@@ -52,27 +80,151 @@ export default function PresentationsTool() {
     }
   };
 
-  const addSlide = () => setSlides(prev => [...prev, { id: makeId(), text: "" }]);
+  const addSlide = () => setSlides(prev => [...prev, { id: makeId(), heading: "", details: "" }]);
 
   const removeSlide = (id: string) => {
     setSlides(prev => {
-      if (prev.length === 1) return [{ id: makeId(), text: "" }];
+      if (prev.length === 1) return [{ id: makeId(), heading: "", details: "" }];
       return prev.filter(s => s.id !== id);
     });
   };
 
   const resetPresentationDraft = () => {
     setPresentationTitle("Новая презентация");
-    setSlides([{ id: makeId(), text: "" }]);
+    setSlides([{ id: makeId(), heading: "", details: "" }]);
+  };
+
+  const generateWithAI = async () => {
+    const topic = aiTopic.trim() || presentationTitle.trim();
+    const requestedSlides = Math.min(Math.max(Number(aiSlidesCount) || 0, 3), 12);
+
+    if (!topic) {
+      setAiError("Введите тему или запрос для генерации.");
+      return;
+    }
+
+    setAiLoading(true);
+    setAiError(null);
+    setAiInfo(null);
+    setDetailsError(null);
+
+    try {
+      const res = await fetch("/api/teacher/presentations/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, slides: requestedSlides }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const code = typeof data?.error === "string" ? data.error : "Не удалось получить ответ от ИИ";
+        const message =
+          code === "NO_TOPIC"
+            ? "Введите тему для генерации."
+            : code === "FORBIDDEN"
+              ? "Доступ запрещён."
+              : code === "TIMEOUT"
+                ? "Сервер ИИ не ответил вовремя. Попробуйте ещё раз."
+                : "Не удалось получить ответ от ИИ.";
+        throw new Error(message);
+      }
+
+      const normalizedSlides: SlideDraft[] = Array.isArray(data?.slides)
+        ? data.slides
+            .map(
+              (s: {
+                heading?: string | null;
+                text?: string | null;
+                details?: string | null;
+                imageDataUrl?: string | null;
+                imageAuthorName?: string | null;
+                imageAuthorUrl?: string | null;
+              }) => {
+                const headingRaw = typeof s?.heading === "string" ? s.heading : typeof s?.text === "string" ? s.text : "";
+                const heading = headingRaw.trim();
+                if (!heading) return null;
+                const details = typeof s?.details === "string" ? s.details.trim() : "";
+                const imageDataUrl =
+                  typeof s?.imageDataUrl === "string" && s.imageDataUrl.trim() ? s.imageDataUrl.trim() : undefined;
+                const imageAuthorName =
+                  typeof s?.imageAuthorName === "string" && s.imageAuthorName.trim() ? s.imageAuthorName.trim() : undefined;
+                const imageAuthorUrl =
+                  typeof s?.imageAuthorUrl === "string" && s.imageAuthorUrl.trim() ? s.imageAuthorUrl.trim() : undefined;
+                return { id: makeId(), heading, details, imageDataUrl, imageAuthorName, imageAuthorUrl };
+              }
+            )
+            .filter(Boolean) as SlideDraft[]
+        : [];
+
+      if (normalizedSlides.length === 0) {
+        throw new Error("Модель вернула пустой ответ. Попробуйте уточнить запрос.");
+      }
+
+      setPresentationTitle(typeof data?.title === "string" && data.title.trim() ? data.title.trim() : topic);
+      setSlides(normalizedSlides);
+      setAiModel(typeof data?.model === "string" ? data.model : null);
+      setAiInfo(`Черновик обновлён: ${normalizedSlides.length} слайдов${data?.model ? ` (модель ${data.model})` : ""}.`);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : "Не удалось сгенерировать презентацию.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const generateDetailsForSlide = async (id: string) => {
+    const slide = slides.find(s => s.id === id);
+    if (!slide) return;
+    const heading = pickHeading(slide);
+    const topic = aiTopic.trim() || presentationTitle.trim() || "Презентация";
+
+    if (!heading) {
+      setDetailsError("Сначала укажите заголовок слайда.");
+      return;
+    }
+
+    setDetailsError(null);
+    setDetailsLoadingId(id);
+    try {
+      const res = await fetch("/api/teacher/presentations/expand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, heading }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const code = typeof data?.error === "string" ? data.error : "Не удалось получить ответ от ИИ";
+        const message =
+          code === "NO_PROMPT_TEMPLATE"
+            ? "Не найден шаблон промпта для детализации."
+            : code === "NO_DATA"
+              ? "Укажите заголовок и тему презентации."
+              : code === "TIMEOUT"
+                ? "Сервер ИИ не ответил вовремя. Попробуйте ещё раз."
+                : "Не удалось сгенерировать подробности.";
+        throw new Error(message);
+      }
+      const details = typeof data?.details === "string" ? data.details.trim() : "";
+      if (!details) throw new Error("Модель вернула пустой ответ.");
+      setSlides(prev => prev.map(s => (s.id === id ? { ...s, details } : s)));
+      setAiModel(typeof data?.model === "string" ? data.model : aiModel);
+    } catch (e: unknown) {
+      setDetailsError(e instanceof Error ? e.message : "Не удалось сгенерировать подробности.");
+    } finally {
+      setDetailsLoadingId(null);
+    }
   };
 
   const savePresentation = () => {
     const safeTitle = presentationTitle.trim() || "Без названия";
     const preparedSlides = slides
-      .map(s => ({ ...s, text: s.text.trim() }))
-      .filter(s => s.text || s.imageDataUrl);
+      .map(s => ({
+        ...s,
+        heading: pickHeading(s),
+        details: pickDetails(s),
+      }))
+      .filter(s => s.heading || s.details || s.imageDataUrl);
     if (preparedSlides.length === 0) {
-      alert("Добавьте хотя бы один слайд с текстом или изображением");
+      alert("Добавьте хотя бы один слайд с заголовком, текстом или изображением");
       return;
     }
     const created: Presentation = { id: makeId(), title: safeTitle, slides: preparedSlides, createdAt: Date.now() };
@@ -81,7 +233,7 @@ export default function PresentationsTool() {
   };
 
   const startPresentation = (p: Presentation) => {
-    const slidesToShow = p.slides.filter(s => s.text || s.imageDataUrl);
+    const slidesToShow = p.slides.filter(s => pickHeading(s) || pickDetails(s) || s.imageDataUrl);
     if (slidesToShow.length === 0) {
       alert("В презентации нет слайдов для показа");
       return;
@@ -141,7 +293,13 @@ export default function PresentationsTool() {
     if (!shareBase) return "";
     const payload = {
       title: p.title,
-      slides: p.slides.map(s => ({ text: s.text, imageDataUrl: s.imageDataUrl })),
+      slides: p.slides.map(s => ({
+        heading: pickHeading(s),
+        details: pickDetails(s),
+        imageDataUrl: s.imageDataUrl,
+        imageAuthorName: s.imageAuthorName,
+        imageAuthorUrl: s.imageAuthorUrl,
+      })),
     };
     const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
     // payload кладём в hash, чтобы не ходить на сервер и не упираться в лимиты query
@@ -185,6 +343,65 @@ export default function PresentationsTool() {
       </div>
 
       <div className="rounded-2xl border bg-white p-5 space-y-3 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="space-y-1">
+            <div className="text-xs uppercase tracking-wide text-gray-500">ИИ на сервере Ollama</div>
+            <div className="text-lg font-semibold">Сгенерировать черновик презентации</div>
+            <p className="text-sm text-gray-600">
+              Укажите тему или запрос, и мы заменим текущий черновик слайдами с сервера ИИ. После генерации можно редактировать текст и добавлять изображения.
+            </p>
+          </div>
+          <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+            {aiModel ? `Модель: ${aiModel}` : "Используется сервер Ollama"}
+          </div>
+        </div>
+
+        <label className="block text-sm font-medium text-gray-700">
+          Тема / запрос
+          <textarea
+            className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+            placeholder="Например: Введение в квантовые вычисления для студентов 3 курса"
+            value={aiTopic}
+            onChange={(e) => setAiTopic(e.target.value)}
+            rows={3}
+          />
+        </label>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="text-sm font-medium text-gray-700">
+            Кол-во слайдов
+            <input
+              type="number"
+              min={3}
+              max={12}
+              className="ml-2 w-20 rounded-lg border px-2 py-1 text-sm"
+              value={aiSlidesCount}
+              onChange={(e) => setAiSlidesCount(Number(e.target.value) || 0)}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={generateWithAI}
+            disabled={aiLoading}
+            className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {aiLoading && (
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-white" />
+            )}
+            {aiLoading ? "Запрашиваем..." : "Сгенерировать слайды"}
+          </button>
+          <div className="text-xs text-gray-500">Текущий черновик будет заменён новым ответом ИИ.</div>
+        </div>
+
+        {aiError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{aiError}</div>
+        )}
+        {aiInfo && (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{aiInfo}</div>
+        )}
+      </div>
+
+      <div className="rounded-2xl border bg-white p-5 space-y-3 shadow-sm">
         <input
           className="w-full rounded-xl border px-3 py-2"
           placeholder="Название презентации"
@@ -217,25 +434,66 @@ export default function PresentationsTool() {
                 />
               </label>
               {slide.imageDataUrl && (
-                <Image
-                  src={slide.imageDataUrl}
-                  alt=""
-                  width={800}
-                  height={480}
-                  unoptimized
-                  className="max-h-48 w-full rounded-lg object-contain border"
-                />
+                <div className="space-y-1">
+                  <Image
+                    src={slide.imageDataUrl}
+                    alt=""
+                    width={800}
+                    height={480}
+                    unoptimized
+                    className="max-h-48 w-full rounded-lg object-contain border"
+                  />
+                  {(slide.imageAuthorName || slide.imageAuthorUrl) && (
+                    <div className="text-[11px] text-gray-500">
+                      Фото {slide.imageAuthorUrl ? (
+                        <a className="underline" href={slide.imageAuthorUrl} target="_blank" rel="noreferrer">
+                          {slide.imageAuthorName || "на Unsplash"}
+                        </a>
+                      ) : (
+                        slide.imageAuthorName || "Unsplash"
+                      )}{" "}
+                      на Unsplash
+                    </div>
+                  )}
+                </div>
               )}
 
               <label className="block text-sm font-medium text-gray-700">
-                Текст для слайда
-                <textarea
+                Заголовок
+                <input
                   className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                  placeholder="Краткий тезис, подписи к фото или список"
-                  value={slide.text}
-                  onChange={(e) => updateSlideText(slide.id, e.target.value)}
+                  placeholder="Коротко: о чём слайд"
+                  value={pickHeading(slide)}
+                  onChange={(e) => updateSlideHeading(slide.id, e.target.value)}
                 />
               </label>
+
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Подробности
+                  <textarea
+                    className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                    placeholder="Основные тезисы, 2–4 предложения или маркированный список"
+                    value={pickDetails(slide)}
+                    onChange={(e) => updateSlideDetails(slide.id, e.target.value)}
+                    rows={4}
+                  />
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => generateDetailsForSlide(slide.id)}
+                    disabled={detailsLoadingId === slide.id}
+                    className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs hover:border-gray-400 disabled:opacity-60"
+                  >
+                    {detailsLoadingId === slide.id && (
+                      <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-400 border-t-gray-700" />
+                    )}
+                    {detailsLoadingId === slide.id ? "Генерация..." : "Сгенерировать подробности"}
+                  </button>
+                  {detailsError && <span className="text-xs text-red-600">{detailsError}</span>}
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -326,7 +584,7 @@ export default function PresentationsTool() {
 
       {livePresentation && liveSlides.length > 0 && (
         <div className="fixed inset-0 z-50 bg-white text-gray-900">
-          <div className="mx-auto flex h-full max-w-5xl flex-col gap-4 px-4 py-6">
+          <div className="mx-auto flex h-full max-w-6xl flex-col gap-4 px-4 py-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs uppercase tracking-wide text-gray-600">
@@ -362,28 +620,51 @@ export default function PresentationsTool() {
                 } items-stretch justify-start`}>
                 {liveHasImage && (
                   <div
-                    className={`flex w-full items-center justify-center md:w-1/2 ${
+                    className={`flex w-full items-center justify-center md:w-5/12 ${
                       liveHasText ? (liveImageLeft ? "order-1" : "order-2") : ""
                     }`}>
-                    <Image
-                      src={liveSlide?.imageDataUrl || ""}
-                      alt=""
-                      width={1400}
-                      height={900}
-                      unoptimized
-                      className="max-h-[70vh] w-full rounded-xl object-contain border border-gray-200 bg-white"
-                    />
+                    <div className="w-full space-y-2">
+                      <Image
+                        src={liveSlide?.imageDataUrl || ""}
+                        alt=""
+                        width={1400}
+                        height={900}
+                        unoptimized
+                        className="max-h-[70vh] w-full rounded-xl object-contain border border-gray-200 bg-white"
+                      />
+                      {(liveSlide?.imageAuthorName || liveSlide?.imageAuthorUrl) && (
+                        <div className="text-xs text-gray-500">
+                          Фото{" "}
+                          {liveSlide?.imageAuthorUrl ? (
+                            <a
+                              href={liveSlide.imageAuthorUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline"
+                            >
+                              {liveSlide.imageAuthorName || "на Unsplash"}
+                            </a>
+                          ) : (
+                            liveSlide?.imageAuthorName || "Unsplash"
+                          )}{" "}
+                          на Unsplash
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {liveHasText && (
                   <div
-                    className={`flex w-full md:w-1/2 ${
+                    className={`flex w-full md:w-7/12 ${
                       liveHasImage ? (liveImageLeft ? "order-2" : "order-1") : ""
                     }`}>
-                    <div
-                      className="w-full max-w-3xl whitespace-pre-line text-left text-base leading-relaxed text-gray-900 md:text-lg"
-                    >
-                      {liveSlide?.text}
+                    <div className="w-full max-w-3xl text-left text-base leading-relaxed text-gray-900 md:text-lg">
+                      {liveHeading && <div className="mb-2 text-xl font-semibold md:text-2xl">{liveHeading}</div>}
+                      {liveDetails && (
+                        <div className="whitespace-pre-line text-gray-900">
+                          {liveDetails}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
