@@ -6,12 +6,12 @@ const bcrypt = require("bcrypt");
 
 const prisma = new PrismaClient();
 
-async function upsertUser({ id, username, name, role, password }) {
+async function upsertUser({ id, username, name, role, password, email }) {
   const normalizedUsername = username.toLowerCase();
   return prisma.user.upsert({
     where: { username: normalizedUsername },
-    update: { name, role, password },
-    create: { id, username: normalizedUsername, name, role, password },
+    update: { name, role, password, email },
+    create: { id, username: normalizedUsername, name, role, password, email },
   });
 }
 
@@ -31,6 +31,14 @@ async function upsertMaterial({ id, courseId, teacherId, title, description, url
   });
 }
 
+async function upsertProfile({ userId, fullName, bio, avatarUrl, email }) {
+  return prisma.profile.upsert({
+    where: { userId },
+    update: { fullName, bio, avatarUrl, email },
+    create: { userId, fullName, bio, avatarUrl, email },
+  });
+}
+
 async function main() {
   console.log("🌱 Сидируем базу...");
   const passwordHash = await bcrypt.hash("1111", 10);
@@ -41,6 +49,7 @@ async function main() {
     name: "Администратор",
     role: Role.ADMIN,
     password: passwordHash,
+    email: "admin1@example.org",
   });
 
   const teacher = await upsertUser({
@@ -49,6 +58,7 @@ async function main() {
     name: "Преподаватель One",
     role: Role.TEACHER,
     password: passwordHash,
+    email: "teacher1@example.org",
   });
 
   const student = await upsertUser({
@@ -57,7 +67,13 @@ async function main() {
     name: "Студент One",
     role: Role.STUDENT,
     password: passwordHash,
+    email: "student1@example.org",
   });
+
+  // Ensure profiles exist for seeded users
+  await upsertProfile({ userId: admin.id, fullName: admin.name, bio: "Администратор платформы", email: admin.email });
+  await upsertProfile({ userId: teacher.id, fullName: teacher.name, bio: "Преподаватель курса", email: teacher.email });
+  await upsertProfile({ userId: student.id, fullName: student.name, bio: "Студент курса", email: student.email });
 
   const courses = await Promise.all([
     upsertCourse({

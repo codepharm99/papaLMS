@@ -73,6 +73,7 @@ export default function Nav() {
           {user?.role === "STUDENT" && (
             <NavLink href="/student/tests" label="Тестирование" isActive={isStudentTests} />
           )}
+          {user && <NavLink href="/profile" label="Профиль" isActive={pathname.startsWith("/profile")} />}
           {user?.role === "TEACHER" && (
             <NavLink href="/teacher/tools" label="Инструменты" isActive={pathname.startsWith("/teacher/tools")} />
           )}
@@ -88,11 +89,11 @@ export default function Nav() {
             </span>
             <button
               type="button"
-              onClick={() => router.push("/login")}
+              onClick={() => router.push(user ? "/profile" : "/login")}
               className="inline-flex items-center gap-1 rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200"
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
-              {user ? "Выйти" : "Войти"}
+              {user ? "Профиль" : "Войти"}
             </button>
           </div>
         )}
