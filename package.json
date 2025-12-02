@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "npm run db:setup && next dev",
+    "build": "npm run db:deploy && next build",
+    "start": "npm run db:deploy && next start",
     "lint": "eslint",
-    "seed": "node prisma/seed.cjs"
+    "seed": "node prisma/seed.cjs",
+    "db:deploy": "prisma migrate deploy",
+    "db:setup": "npm run db:deploy && npm run seed"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

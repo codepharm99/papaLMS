@@ -19,6 +19,7 @@ type QuestionItem = { id: string; testId: string; text: string; options?: string
 type StudentItem = { id: string; name: string };
 type StudentStatus = { id: string; name: string; status: "ASSIGNED" | "IN_PROGRESS" | "COMPLETED"; timestamp: number };
 type QuestionPayload = { text: string; options?: string[]; correctIndex?: number | null };
+type GuestAttempt = { id: string; name: string; score: number; total: number; createdAt: number };
 
 export default function EditTestPage() {
   const params = useParams<{ id: string }>();
@@ -28,8 +29,11 @@ export default function EditTestPage() {
   const [, setQuestions] = useState<QuestionItem[]>([]);
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [studentStatus, setStudentStatus] = useState<StudentStatus[]>([]);
+  const [guestAttempts, setGuestAttempts] = useState<GuestAttempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [guestLoading, setGuestLoading] = useState(true);
+  const [guestError, setGuestError] = useState<string | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
 
@@ -94,6 +98,27 @@ export default function EditTestPage() {
       finally { if (!cancelled) setStatusLoading(false); }
     }
     if (testId) loadStatus();
+    return () => { cancelled = true; };
+  }, [testId]);
+
+  // --- Гостевые попытки ---
+  useEffect(() => {
+    let cancelled = false;
+    async function loadGuests() {
+      setGuestLoading(true);
+      setGuestError(null);
+      try {
+        const res = await fetch(`/api/teacher/tests/${testId}/guests`);
+        if (!res.ok) throw new Error(`Статус ${res.status}`);
+        const data: GuestAttempt[] = await res.json();
+        if (!cancelled) setGuestAttempts(data);
+      } catch (e) {
+        if (!cancelled) setGuestError(e instanceof Error ? e.message : "Ошибка загрузки гостевых попыток");
+      } finally {
+        if (!cancelled) setGuestLoading(false);
+      }
+    }
+    if (testId) loadGuests();
     return () => { cancelled = true; };
   }, [testId]);
 
@@ -273,6 +298,30 @@ export default function EditTestPage() {
                     ))}
                   </ul>
                 </div>
+              </div>
+            )}
+          </section>
+
+          {/* Гостевые попытки */}
+          <section className="border p-4 rounded-xl bg-white">
+            <h2 className="text-lg font-semibold mb-2">Гостевые сдачи по ссылке</h2>
+            {guestLoading ? (
+              <div>Загрузка...</div>
+            ) : guestError ? (
+              <div className="text-sm text-red-600">{guestError}</div>
+            ) : guestAttempts.length === 0 ? (
+              <div className="text-sm text-gray-600">Пока никто не сдавал тест по публичной ссылке.</div>
+            ) : (
+              <div className="space-y-2">
+                {guestAttempts.map(a => (
+                  <div key={a.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{a.name}</span>
+                      <span className="text-xs text-gray-500">{new Date(a.createdAt).toLocaleString()}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-800">{a.score} / {a.total}</span>
+                  </div>
+                ))}
               </div>
             )}
           </section>

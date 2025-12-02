@@ -26,7 +26,7 @@ export default function TeacherToolsPage() {
           className="group block rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
         >
           <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Тестирование</div>
-          <div className="text-base font-medium">Создание и прошедшие тесты</div>
+          <div className="text-base font-medium">Создание тестов и прошлые тесты</div>
           <div className="mt-3 inline-flex items-center text-sm text-blue-600 group-hover:underline">
             Открыть →
           </div>

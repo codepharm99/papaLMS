@@ -88,6 +88,14 @@ export type TestStudentStatus = {
   timestamp: number;
 };
 
+export type GuestAttempt = {
+  id: string;
+  name: string;
+  score: number;
+  total: number;
+  createdAt: number;
+};
+
 const PASSWORD_SALT_ROUNDS = 10;
 
 const sanitizeUser = (user: { id: string; username: string; name: string; role: Role } | null): User | null =>
@@ -738,6 +746,30 @@ export async function listStudentStatusesForTest(
     timestamp: a.createdAt.getTime(),
   }));
   return { ok: true, items };
+}
+
+export async function listGuestAttemptsForTest(
+  teacher: User,
+  testId: string
+): Promise<{ ok: true; items: GuestAttempt[] } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) return { error: "TEST_NOT_FOUND" };
+  if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  const attempts = await prisma.guestTestAttempt.findMany({
+    where: { testId },
+    orderBy: { createdAt: "desc" },
+  });
+  return {
+    ok: true,
+    items: attempts.map(a => ({
+      id: a.id,
+      name: a.name,
+      score: a.score,
+      total: a.total,
+      createdAt: a.createdAt.getTime(),
+    })),
+  };
 }
 
 export type StudentAssignment = {

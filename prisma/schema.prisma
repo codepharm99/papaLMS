@@ -28,8 +28,6 @@ model User {
   tests           Test[]           @relation("TeacherTests")
   studentAssignments TestAssignment[] @relation("StudentAssignments")
   givenAssignments   TestAssignment[] @relation("GivenAssignments")
-  email    String? @unique
-  profile Profile?
 }
 
 model Course {
@@ -134,6 +132,18 @@ model GuestTestAttempt {
   total     Int
   answers   Json?
   createdAt DateTime @default(now())
+}
+
+model Presentation {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation("TeacherPresentations", fields: [teacherId], references: [id])
+  title     String
+  slides    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId, createdAt])
 }
 
 model Profile {
