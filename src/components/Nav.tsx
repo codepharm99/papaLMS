@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Telescope, LogOut } from "lucide-react";
 import { useCurrentUser } from "@/components/user-context";
+import AccountMenu from "@/components/AccountMenu";
 import type { Role } from "@/lib/mockdb";
 
 function NavLink({
@@ -87,14 +88,7 @@ export default function Nav() {
             <span className="hidden text-sm text-gray-600 md:inline">
               {user?.name ?? "Гость"} · {user ? roleLabels[user.role] ?? user.role : "—"}
             </span>
-            <button
-              type="button"
-              onClick={() => router.push(user ? "/profile" : "/login")}
-              className="inline-flex items-center gap-1 rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200"
-            >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              {user ? "Профиль" : "Войти"}
-            </button>
+            <AccountMenu user={user ?? null} />
           </div>
         )}
       </div>
