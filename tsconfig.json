@@ -21,7 +21,10 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+
     "jsx": "react-jsx",
+    "jsxImportSource": "react",      // ← ДОБАВЛЕНО
+
     "incremental": true,
     "plugins": [
       {
