@@ -41,6 +41,7 @@ export async function PATCH(req: Request) {
   try {
     const user = await currentUser();
     if (!user) throw new Error("Unauthenticated");
+    const existing = await prisma.profile.findUnique({ where: { userId: user.id } });
     const contentType = req.headers.get("content-type") ?? "";
     const updates: any = {};
 
@@ -50,18 +51,44 @@ export async function PATCH(req: Request) {
       const form = await req.formData();
       const fullName = form.get("fullName");
       const bio = form.get("bio");
-      const settings = form.get("settings");
       const avatar = form.get("avatar") as File | null;
 
       if (typeof fullName === "string") updates.fullName = fullName;
       if (typeof bio === "string") updates.bio = bio;
-      if (typeof settings === "string") {
+
+      // links + certificates metadata (titles + existing list)
+      const settingsMetaRaw = form.get("settingsMeta");
+      const metaDefaults = {
+        links: (existing?.settings as any)?.links ?? {},
+        existingCertificates: Array.isArray((existing as any)?.settings?.certificates) ? (existing as any).settings.certificates : [],
+        newCertificates: [],
+      };
+      let settingsMeta = metaDefaults as {
+        links?: any;
+        existingCertificates?: any;
+        newCertificates?: Array<{ title?: string }>;
+      };
+      if (typeof settingsMetaRaw === "string") {
         try {
-          updates.settings = JSON.parse(settings as string);
+          const parsed = JSON.parse(settingsMetaRaw);
+          settingsMeta = { ...metaDefaults, ...parsed };
         } catch (e) {
-          updates.settings = settings;
+          settingsMeta = metaDefaults;
         }
       }
+
+      const certificateFiles = form
+        .getAll("certificateFiles")
+        .filter((f): f is File => f instanceof File && typeof (f as any).arrayBuffer === "function");
+      const certificateTitles: string[] = Array.isArray(settingsMeta?.newCertificates)
+        ? settingsMeta.newCertificates.map((c) => (typeof c?.title === "string" ? c.title : "Сертификат"))
+        : [];
+
+      const certificates: Array<{ title: string; url: string }> = Array.isArray(settingsMeta.existingCertificates)
+        ? settingsMeta.existingCertificates
+            .map((c: any) => (c && typeof c.title === "string" && typeof c.url === "string" ? { title: c.title, url: c.url } : null))
+            .filter(Boolean)
+        : [];
 
       if (avatar && typeof (avatar as any).arrayBuffer === "function") {
         const arrayBuffer = await (avatar as any).arrayBuffer();
@@ -81,7 +108,7 @@ export async function PATCH(req: Request) {
 
         if (useS3) {
           try {
-            const { S3Client, PutObjectCommand, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+            const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
             const s3 = new S3Client({ region });
             const key = `avatars/${filename}`;
             await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: buffer, ContentType: mime }));
@@ -106,16 +133,69 @@ export async function PATCH(req: Request) {
           updates.avatarUrl = `/uploads/avatars/${filename}`;
         }
       }
+
+      // Upload new certificate PDFs (if any) and extend settings.certificates
+      if (certificateFiles.length > 0) {
+        const bucket = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || process.env.AWS_BUCKET;
+        const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
+        const useS3 = !!bucket;
+        for (let i = 0; i < certificateFiles.length; i++) {
+          const file = certificateFiles[i];
+          const title = certificateTitles[i] || file.name.replace(/\.pdf$/i, "");
+          if (file.type !== "application/pdf") {
+            throw new Error("Certificates must be PDF");
+          }
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const filename = `${user.id}-cert-${Date.now()}-${i}.pdf`;
+          if (useS3) {
+            try {
+              const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
+              const s3 = new S3Client({ region });
+              const key = `certificates/${filename}`;
+              await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: buffer, ContentType: "application/pdf" }));
+              const base = process.env.S3_BASE_URL || `https://${bucket}.s3.${region}.amazonaws.com`;
+              certificates.push({ title, url: `${base}/${key}` });
+            } catch (e) {
+              console.warn("S3 upload failed for certificate, falling back to local storage", e);
+              const uploadsDir = path.join(process.cwd(), "public", "uploads", "certificates");
+              await fs.mkdir(uploadsDir, { recursive: true });
+              const filepath = path.join(uploadsDir, filename);
+              await fs.writeFile(filepath, buffer);
+              certificates.push({ title, url: `/uploads/certificates/${filename}` });
+            }
+          } else {
+            const uploadsDir = path.join(process.cwd(), "public", "uploads", "certificates");
+            await fs.mkdir(uploadsDir, { recursive: true });
+            const filepath = path.join(uploadsDir, filename);
+            await fs.writeFile(filepath, buffer);
+            certificates.push({ title, url: `/uploads/certificates/${filename}` });
+          }
+        }
+      }
+
+      // Final settings update from multipart
+      updates.settings = {
+        links: settingsMeta?.links ?? {},
+        certificates,
+      };
     } else {
       const payload = await req.json();
       if (typeof payload.fullName === "string") updates.fullName = payload.fullName;
       if (typeof payload.bio === "string") updates.bio = payload.bio;
       if (typeof payload.avatarUrl === "string") updates.avatarUrl = payload.avatarUrl;
-      if (payload.settings !== undefined) updates.settings = payload.settings;
+      if (payload.settings !== undefined) {
+        const links = payload.settings?.links ?? (existing?.settings as any)?.links ?? {};
+        const certificates = Array.isArray(payload.settings?.certificates)
+          ? payload.settings.certificates.filter((c: any) => c && typeof c.title === "string" && typeof c.url === "string")
+          : Array.isArray((existing as any)?.settings?.certificates)
+            ? (existing as any).settings.certificates
+            : [];
+        updates.settings = { links, certificates };
+      }
     }
 
     // before upsert: try to remove previous avatar file/object if replaced
-    const existing = await prisma.profile.findUnique({ where: { userId: user.id } });
     if (existing && existing.avatarUrl && updates.avatarUrl && existing.avatarUrl !== updates.avatarUrl) {
       try {
         const bucket = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || process.env.AWS_BUCKET;

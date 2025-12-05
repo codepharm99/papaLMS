@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Telescope, LogOut } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Telescope } from "lucide-react";
 import { useCurrentUser } from "@/components/user-context";
 import AccountMenu from "@/components/AccountMenu";
 import type { Role } from "@/lib/mockdb";
@@ -34,7 +34,6 @@ function NavLink({
 
 export default function Nav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user } = useCurrentUser();
 
   const roleLabels: Record<Role, string> = {
@@ -45,8 +44,7 @@ export default function Nav() {
 
   const isCatalog = pathname.startsWith("/catalog");
   const isMy =
-    pathname.startsWith("/my") ||
-    pathname.startsWith("/catalog?mine") ||
+    pathname.startsWith("/student/courses") ||
     pathname.startsWith("/teacher/courses");
   const isAuthPage = pathname.startsWith("/login");
   const isStudentTests = pathname.startsWith("/student/tests");
@@ -67,7 +65,7 @@ export default function Nav() {
           <NavLink href="/catalog" label="Каталог" isActive={isCatalog} />
           {/* «Мои курсы»: студенты — свои записи, преподаватели — свои курсы */}
           <NavLink
-            href={user?.role === "TEACHER" ? "/teacher/courses" : "/catalog?mine=1"}
+            href={user?.role === "TEACHER" ? "/teacher/courses" : "/student/courses"}
             label="Мои курсы"
             isActive={isMy}
           />

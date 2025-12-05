@@ -1,7 +1,14 @@
+// Client so we can choose the correct target for "Мои курсы" based on role
+"use client";
+
 import ProfileModule from "@/components/ProfileModule";
 import Link from "next/link";
+import { useCurrentUser } from "@/components/user-context";
 
 export default function ProfilePage() {
+  const { user } = useCurrentUser();
+  const myCoursesHref = user?.role === "TEACHER" ? "/teacher/courses" : "/student/courses";
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
@@ -20,8 +27,8 @@ export default function ProfilePage() {
             <p className="mt-1 text-sm text-gray-600">Управляйте своей информацией и фотографией профиля.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/teacher/tools" className="inline-flex items-center px-4 py-2 bg-white border rounded-md text-sm text-gray-700 hover:bg-gray-50">
-              Инструменты
+            <Link href={myCoursesHref} className="inline-flex items-center px-4 py-2 bg-white border rounded-md text-sm text-gray-700 hover:bg-gray-50">
+              Мои курсы
             </Link>
             <Link href="/" className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">
               На сайт

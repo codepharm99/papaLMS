@@ -65,7 +65,7 @@ export default function AccountMenu({ user }: { user: UserShort }) {
               Настройки
             </Link>
             <Link
-              href={user?.role === "TEACHER" ? "/teacher/courses" : "/catalog?mine=1"}
+              href={user?.role === "TEACHER" ? "/teacher/courses" : "/student/courses"}
               onClick={() => setOpen(false)}
               className="mt-1 flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >

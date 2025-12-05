@@ -4,21 +4,39 @@ import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/components/user-context";
 
+type ProfileLinks = { github?: string; linkedin?: string; website?: string; other?: string };
+type ProfileCertificate = { title: string; url: string };
+type ProfileSettings = { links?: ProfileLinks; certificates?: ProfileCertificate[] };
+
 type ProfileShape = {
   id?: number | string;
   userId?: string;
   fullName?: string | null;
   bio?: string | null;
   avatarUrl?: string | null;
-  settings?: any;
+  settings?: ProfileSettings | null;
   email?: string | null;
+};
+
+type FormState = {
+  fullName: string;
+  bio: string;
+  certificates: Array<{ title: string; url?: string; file?: File | null }>;
+  links: { github: string; linkedin: string; website: string; other: string };
+};
+
+const emptyForm: FormState = {
+  fullName: "",
+  bio: "",
+  certificates: [],
+  links: { github: "", linkedin: "", website: "", other: "" },
 };
 
 export default function ProfileModule() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileShape | null>(null);
   const [unauthenticated, setUnauthenticated] = useState(false);
-  const [form, setForm] = useState({ fullName: "", bio: "" });
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
   const { user, refresh } = useCurrentUser();
@@ -27,6 +45,7 @@ export default function ProfileModule() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const certificateInputRef = useRef<HTMLInputElement | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: string; type?: "info" | "success" | "error"; message: string; visible: boolean }>>([]);
 
@@ -74,8 +93,19 @@ export default function ProfileModule() {
         const data = await res.json().catch(() => ({}));
         if (!mounted) return;
         if (data?.profile) {
+          const normalized = normalizeSettings(data.profile.settings);
           setProfile(data.profile);
-          setForm({ fullName: data.profile.fullName ?? "", bio: data.profile.bio ?? "" });
+          setForm({
+            fullName: data.profile.fullName ?? "",
+            bio: data.profile.bio ?? "",
+            links: {
+              github: normalized.links.github ?? "",
+              linkedin: normalized.links.linkedin ?? "",
+              website: normalized.links.website ?? "",
+              other: normalized.links.other ?? "",
+            },
+            certificates: normalized.certificates.map((c) => ({ title: c.title, url: c.url })),
+          });
           setAvatarPreview(data.profile.avatarUrl ?? null);
         } else {
           setProfile(null);
@@ -97,20 +127,25 @@ export default function ProfileModule() {
     e?.preventDefault();
     setSaving(true);
     try {
+      const settingsPayload = buildSettingsPayload(form);
+      const hasCertificateFiles = form.certificates.some((c) => c.file);
       let res: Response;
-      if (avatarFile) {
-        // compress/resize on client before upload
-        const compressed = await compressImage(avatarFile, 512, 0.8);
+      if (avatarFile || hasCertificateFiles) {
         const fd = new FormData();
         fd.append("fullName", form.fullName);
         fd.append("bio", form.bio);
+        fd.append("settingsMeta", JSON.stringify(settingsPayload.meta));
         // create a File from the compressed blob so server can read name/type
-        const uploadName = avatarFile.name.replace(/\.[^.]+$/, "") + ".jpg";
-        const fileForUpload = new File([compressed], uploadName, { type: compressed.type });
-        fd.append("avatar", fileForUpload);
+        if (avatarFile) {
+          const compressed = await compressImage(avatarFile, 512, 0.8);
+          const uploadName = avatarFile.name.replace(/\.[^.]+$/, "") + ".jpg";
+          const fileForUpload = new File([compressed], uploadName, { type: compressed.type });
+          fd.append("avatar", fileForUpload);
+        }
+        settingsPayload.newCertificateFiles.forEach((file) => fd.append("certificateFiles", file));
         res = await fetch("/api/profile", { method: "PATCH", body: fd });
       } else {
-        const bodyPayload: any = { fullName: form.fullName, bio: form.bio };
+        const bodyPayload: any = { fullName: form.fullName, bio: form.bio, settings: settingsPayload.settingsOnly };
         if (avatarPreview) bodyPayload.avatarUrl = avatarPreview;
         res = await fetch("/api/profile", {
           method: "PATCH",
@@ -124,6 +159,18 @@ export default function ProfileModule() {
       }
       const data = await res.json();
       setProfile(data.profile);
+      const normalized = normalizeSettings(data.profile.settings);
+      setForm({
+        fullName: data.profile.fullName ?? "",
+        bio: data.profile.bio ?? "",
+        links: {
+          github: normalized.links.github ?? "",
+          linkedin: normalized.links.linkedin ?? "",
+          website: normalized.links.website ?? "",
+          other: normalized.links.other ?? "",
+        },
+        certificates: normalized.certificates.map((c) => ({ title: c.title, url: c.url })),
+      });
       setEditMode(false);
       showToast("Профиль сохранён", "success");
     } catch (err: any) {
@@ -132,6 +179,48 @@ export default function ProfileModule() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const normalizeSettings = (settings: ProfileSettings | null | undefined): Required<ProfileSettings> => {
+    const linksRaw = (settings as any)?.links ?? {};
+    const links: ProfileLinks = {
+      github: typeof linksRaw.github === "string" ? linksRaw.github : undefined,
+      linkedin: typeof linksRaw.linkedin === "string" ? linksRaw.linkedin : undefined,
+      website: typeof linksRaw.website === "string" ? linksRaw.website : undefined,
+      other: typeof linksRaw.other === "string" ? linksRaw.other : undefined,
+    };
+    const certificatesRaw = Array.isArray((settings as any)?.certificates) ? (settings as any).certificates : [];
+    const certificates = certificatesRaw
+      .map((c) => (c && typeof c.title === "string" && typeof c.url === "string" ? { title: c.title, url: c.url } : null))
+      .filter((c): c is ProfileCertificate => !!c);
+    return { links, certificates };
+  };
+
+  const buildSettingsPayload = (state: FormState) => {
+    const trimmedLinks = Object.fromEntries(
+      Object.entries(state.links)
+        .map(([k, v]) => [k, v.trim()])
+        .filter(([, v]) => v)
+    ) as ProfileLinks;
+
+    const existingCertificates = state.certificates
+      .filter((c) => c.url && !c.file)
+      .map((c) => ({ title: (c.title || "").trim() || c.url!, url: c.url! }));
+
+    const newCerts = state.certificates.filter((c) => c.file).map((c) => ({
+      title: (c.title || "").trim() || (c.file ? c.file.name.replace(/\\.pdf$/i, "") : "Сертификат"),
+      file: c.file as File,
+    }));
+
+    return {
+      meta: {
+        links: trimmedLinks,
+        existingCertificates,
+        newCertificates: newCerts.map((c) => ({ title: c.title })),
+      },
+      newCertificateFiles: newCerts.map((c) => c.file),
+      settingsOnly: { links: trimmedLinks, certificates: existingCertificates },
+    };
   };
 
   // Compress and resize image using a canvas; returns a JPEG Blob
@@ -213,6 +302,26 @@ export default function ProfileModule() {
     reader.readAsDataURL(f);
   };
 
+  const addCertificateFiles = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    const nonPdf = files.filter((f) => f.type !== "application/pdf");
+    if (nonPdf.length > 0) {
+      showToast("Сертификаты принимаются только в формате PDF.", "error");
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      certificates: [
+        ...prev.certificates,
+        ...files.map((f) => ({
+          title: f.name.replace(/\\.pdf$/i, ""),
+          file: f,
+        })),
+      ],
+    }));
+  };
+
   if (loading) return <div className="p-6">Loading…</div>;
   if (unauthenticated)
     return (
@@ -226,6 +335,8 @@ export default function ProfileModule() {
         </div>
       </div>
     );
+
+  const normalizedSettings = normalizeSettings(profile?.settings);
 
   return (
     <div className="max-w-4xl mx-auto p-6 relative">
@@ -311,6 +422,52 @@ export default function ProfileModule() {
               <div>
                 <div className="text-sm text-gray-500">О себе</div>
                 <div className="mt-1 text-base whitespace-pre-wrap">{profile?.bio ?? '—'}</div>
+              </div>
+
+              <div>
+                <div className="text-sm text-gray-500">Сертификаты (PDF)</div>
+                <div className="mt-2 space-y-2">
+                  {normalizedSettings.certificates.length > 0 ? (
+                    normalizedSettings.certificates.map((c, idx) => (
+                      <a
+                        key={idx}
+                        href={c.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
+                      >
+                        <span className="truncate">{c.title}</span>
+                        <span className="ml-3 text-xs text-gray-500">PDF</span>
+                      </a>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-500">Сертификаты пока не добавлены.</div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm text-gray-500">Полезные ссылки</div>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {Object.entries(normalizedSettings.links).filter(([, v]) => v).length > 0 ? (
+                    Object.entries(normalizedSettings.links)
+                      .filter(([, v]) => v)
+                      .map(([k, v]) => (
+                        <a
+                          key={k}
+                          href={v}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
+                        >
+                          <span className="capitalize">{k}</span>
+                          <span className="truncate pl-2 text-gray-600">{v}</span>
+                        </a>
+                      ))
+                  ) : (
+                    <div className="text-sm text-gray-500">Нет добавленных ссылок.</div>
+                  )}
+                </div>
               </div>
 
               <div className="pt-4">
@@ -438,6 +595,109 @@ export default function ProfileModule() {
                 />
               </div>
 
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-gray-700">Сертификаты (PDF)</label>
+                  <button
+                    type="button"
+                    onClick={() => certificateInputRef.current?.click()}
+                    className="text-sm text-indigo-600 hover:text-indigo-700"
+                  >
+                    Загрузить файл
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Прикрепите PDF-файлы сертификатов. Их можно переименовать ниже.</p>
+                <input
+                  ref={certificateInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    addCertificateFiles(e.target.files);
+                    e.currentTarget.value = "";
+                  }}
+                />
+                <div className="mt-3 space-y-2">
+                  {form.certificates.length === 0 && (
+                    <div className="text-sm text-gray-500">Пока нет прикреплённых сертификатов.</div>
+                  )}
+                  {form.certificates.map((c, idx) => (
+                    <div key={idx} className="flex flex-col rounded border px-3 py-2 gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={c.title}
+                          onChange={(e) => {
+                            const next = [...form.certificates];
+                            next[idx] = { ...next[idx], title: e.target.value };
+                            setForm({ ...form, certificates: next });
+                          }}
+                          className="flex-1 rounded border px-3 py-2 text-sm"
+                          placeholder="Название сертификата"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, certificates: form.certificates.filter((_, i) => i !== idx) })}
+                          className="rounded border px-2 text-sm text-gray-600 hover:bg-gray-50"
+                          aria-label="Удалить сертификат"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        {c.url ? (
+                          <a href={c.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+                            Открыть PDF
+                          </a>
+                        ) : (
+                          <span className="italic text-gray-500">{c.file ? c.file.name : "Новый файл"}</span>
+                        )}
+                        {c.file && <span className="text-gray-500">Будет загружен</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">GitHub</label>
+                  <input
+                    value={form.links.github}
+                    onChange={(e) => setForm({ ...form, links: { ...form.links, github: e.target.value } })}
+                    className="mt-1 block w-full border rounded p-2"
+                    placeholder="https://github.com/username"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">LinkedIn</label>
+                  <input
+                    value={form.links.linkedin}
+                    onChange={(e) => setForm({ ...form, links: { ...form.links, linkedin: e.target.value } })}
+                    className="mt-1 block w-full border rounded p-2"
+                    placeholder="https://www.linkedin.com/in/username"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Портфолио / сайт</label>
+                  <input
+                    value={form.links.website}
+                    onChange={(e) => setForm({ ...form, links: { ...form.links, website: e.target.value } })}
+                    className="mt-1 block w-full border rounded p-2"
+                    placeholder="https://your-site.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Другая ссылка</label>
+                  <input
+                    value={form.links.other}
+                    onChange={(e) => setForm({ ...form, links: { ...form.links, other: e.target.value } })}
+                    className="mt-1 block w-full border rounded p-2"
+                    placeholder="Behance, Telegram и т.д."
+                  />
+                </div>
+              </div>
+
               <div className="flex gap-3">
                 <button type="submit" disabled={saving} className="px-4 py-2 rounded bg-blue-600 text-white">
                   {saving ? 'Сохранение…' : 'Сохранить'}
@@ -446,7 +706,18 @@ export default function ProfileModule() {
                   type="button"
                   onClick={() => {
                     // cancel edits — reset form to profile values
-                    setForm({ fullName: profile?.fullName ?? '', bio: profile?.bio ?? '' });
+                    const normalized = normalizeSettings(profile?.settings);
+                    setForm({
+                      fullName: profile?.fullName ?? '',
+                      bio: profile?.bio ?? '',
+                      links: {
+                        github: normalized.links.github ?? "",
+                        linkedin: normalized.links.linkedin ?? "",
+                        website: normalized.links.website ?? "",
+                        other: normalized.links.other ?? "",
+                      },
+                      certificates: normalized.certificates.map((c) => ({ title: c.title, url: c.url })),
+                    });
                     setEditMode(false);
                   }}
                   className="px-4 py-2 rounded border bg-white text-gray-700"
