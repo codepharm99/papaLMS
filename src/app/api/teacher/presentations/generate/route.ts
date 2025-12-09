@@ -2,11 +2,11 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
+import { getOllamaConfig } from "@/lib/ollama";
 
 type OllamaResponse = { response?: string | null };
 
-const DEFAULT_MODEL = process.env.OLLAMA_MODEL || "mistral:7b";
-const BASE_URL = (process.env.OLLAMA_BASE_URL || "http://100.81.115.30:11434").replace(/\/+$/, "");
+const { model: DEFAULT_MODEL, baseUrl: BASE_URL } = getOllamaConfig();
 const PROMPT_PATH =
   process.env.PRESENTATION_PROMPT_PATH || path.join(process.cwd(), "prompts", "presentation.md");
 const PEXELS_KEY = process.env.PEXELS_API_KEY || "";
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
   const prompt = renderPrompt(template, { topic, slides: requestedSlides });
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  const timeoutId = setTimeout(() => controller.abort(), 60_000); // allow slower responses from remote Ollama
 
   try {
     const res = await fetch(`${BASE_URL}/api/generate`, {
