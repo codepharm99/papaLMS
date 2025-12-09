@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CourseCard, { CourseVM } from "@/components/CourseCard";
+import { useLanguage } from "@/components/language-context";
 
 type Resp = { items: CourseVM[] };
 
@@ -10,6 +11,8 @@ export default function CatalogPage() {
   const mine = false;
   const [items, setItems] = useState<CourseVM[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const { language } = useLanguage();
+  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
 
   const query = useMemo(() => {
     const p = new URLSearchParams();
@@ -37,21 +40,21 @@ export default function CatalogPage() {
 
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">Каталог курсов!</h1>
+      <h1 className="text-2xl font-semibold">{tr("Каталог курсов!", "Course catalog!")}</h1>
 
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Поиск по названию или коду..."
+          placeholder={tr("Поиск по названию или коду...", "Search by title or code...")}
           className="w-full max-w-md rounded-xl border px-3 py-2 outline-none focus:ring"
         />
       </div>
 
-      {loading && <div className="text-gray-500">Загрузка...</div>}
+      {loading && <div className="text-gray-500">{tr("Загрузка...", "Loading...")}</div>}
 
       {!loading && items && items.length === 0 && (
-        <div className="rounded-2xl border border-dashed p-6 text-gray-500">Ничего не найдено.</div>
+        <div className="rounded-2xl border border-dashed p-6 text-gray-500">{tr("Ничего не найдено.", "Nothing found.")}</div>
       )}
 
       {!loading && items && items.length > 0 && (

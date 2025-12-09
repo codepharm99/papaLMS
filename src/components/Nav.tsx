@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Telescope } from "lucide-react";
 import { useCurrentUser } from "@/components/user-context";
 import AccountMenu from "@/components/AccountMenu";
+import { useLanguage } from "@/components/language-context";
 import type { Role } from "@/lib/mockdb";
 
 function NavLink({
@@ -35,11 +36,21 @@ function NavLink({
 export default function Nav() {
   const pathname = usePathname();
   const { user } = useCurrentUser();
+  const { language } = useLanguage();
 
-  const roleLabels: Record<Role, string> = {
-    STUDENT: "Студент",
-    TEACHER: "Преподаватель",
-    ADMIN: "Админ",
+  const roleLabels: Record<Role, { ru: string; en: string }> = {
+    STUDENT: { ru: "Студент", en: "Student" },
+    TEACHER: { ru: "Преподаватель", en: "Teacher" },
+    ADMIN: { ru: "Админ", en: "Admin" },
+  };
+  const t = {
+    catalog: language === "ru" ? "Каталог" : "Catalog",
+    myCourses: language === "ru" ? "Мои курсы" : "My courses",
+    testing: language === "ru" ? "Тестирование" : "Testing",
+    profile: language === "ru" ? "Профиль" : "Profile",
+    tools: language === "ru" ? "Инструменты" : "Tools",
+    invites: language === "ru" ? "Коды преподавателей" : "Teacher invites",
+    guest: language === "ru" ? "Гость" : "Guest",
   };
 
   const isCatalog = pathname.startsWith("/catalog");
@@ -62,29 +73,29 @@ export default function Nav() {
 
         {/* Links */}
         <nav className="flex items-center gap-2">
-          <NavLink href="/catalog" label="Каталог" isActive={isCatalog} />
+          <NavLink href="/catalog" label={t.catalog} isActive={isCatalog} />
           {/* «Мои курсы»: студенты — свои записи, преподаватели — свои курсы */}
           <NavLink
             href={user?.role === "TEACHER" ? "/teacher/courses" : "/student/courses"}
-            label="Мои курсы"
+            label={t.myCourses}
             isActive={isMy}
           />
           {user?.role === "STUDENT" && (
-            <NavLink href="/student/tests" label="Тестирование" isActive={isStudentTests} />
+            <NavLink href="/student/tests" label={t.testing} isActive={isStudentTests} />
           )}
-          {user && <NavLink href="/profile" label="Профиль" isActive={pathname.startsWith("/profile")} />}
+          {user && <NavLink href="/profile" label={t.profile} isActive={pathname.startsWith("/profile")} />}
           {user?.role === "TEACHER" && (
-            <NavLink href="/teacher/tools" label="Инструменты" isActive={pathname.startsWith("/teacher/tools")} />
+            <NavLink href="/teacher/tools" label={t.tools} isActive={pathname.startsWith("/teacher/tools")} />
           )}
           {user?.role === "ADMIN" && (
-            <NavLink href="/admin/invites" label="Коды преподавателей" isActive={pathname.startsWith("/admin/invites")} />
+            <NavLink href="/admin/invites" label={t.invites} isActive={pathname.startsWith("/admin/invites")} />
           )}
         </nav>
 
         {!isAuthPage && (
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-gray-600 md:inline">
-              {user?.name ?? "Гость"} · {user ? roleLabels[user.role] ?? user.role : "—"}
+              {user?.name ?? t.guest} · {user ? roleLabels[user.role]?.[language] ?? user.role : "—"}
             </span>
             <AccountMenu user={user ?? null} />
           </div>

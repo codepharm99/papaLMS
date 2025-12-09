@@ -4,10 +4,20 @@
 import ProfileModule from "@/components/ProfileModule";
 import Link from "next/link";
 import { useCurrentUser } from "@/components/user-context";
+import { useLanguage } from "@/components/language-context";
 
 export default function ProfilePage() {
   const { user } = useCurrentUser();
+  const { language } = useLanguage();
   const myCoursesHref = user?.role === "TEACHER" ? "/teacher/courses" : "/student/courses";
+  const t = {
+    breadcrumbHome: language === "ru" ? "Главная" : "Home",
+    breadcrumbProfile: language === "ru" ? "Профиль" : "Profile",
+    title: language === "ru" ? "Профиль" : "Profile",
+    description: language === "ru" ? "Управляйте своей информацией и фотографией профиля." : "Manage your info and profile photo.",
+    myCourses: language === "ru" ? "Мои курсы" : "My courses",
+    toSite: language === "ru" ? "На сайт" : "Go to site",
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -17,21 +27,21 @@ export default function ProfilePage() {
             <nav className="text-sm text-gray-500" aria-label="Breadcrumb">
               <ol className="flex items-center space-x-2">
                 <li>
-                  <Link href="/" className="hover:underline text-gray-600">Главная</Link>
+                  <Link href="/" className="hover:underline text-gray-600">{t.breadcrumbHome}</Link>
                 </li>
                 <li className="text-gray-400">/</li>
-                <li className="text-gray-800 font-semibold">Профиль</li>
+                <li className="text-gray-800 font-semibold">{t.breadcrumbProfile}</li>
               </ol>
             </nav>
-            <h1 className="mt-3 text-3xl font-bold text-gray-900">Профиль</h1>
-            <p className="mt-1 text-sm text-gray-600">Управляйте своей информацией и фотографией профиля.</p>
+            <h1 className="mt-3 text-3xl font-bold text-gray-900">{t.title}</h1>
+            <p className="mt-1 text-sm text-gray-600">{t.description}</p>
           </div>
           <div className="flex items-center gap-3">
             <Link href={myCoursesHref} className="inline-flex items-center px-4 py-2 bg-white border rounded-md text-sm text-gray-700 hover:bg-gray-50">
-              Мои курсы
+              {t.myCourses}
             </Link>
             <Link href="/" className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">
-              На сайт
+              {t.toSite}
             </Link>
           </div>
         </div>

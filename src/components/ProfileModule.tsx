@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/components/user-context";
+import { useLanguage } from "@/components/language-context";
 
 type ProfileLinks = { github?: string; linkedin?: string; website?: string; other?: string };
 type ProfileCertificate = { title: string; url: string };
@@ -44,7 +45,6 @@ export default function ProfileModule() {
   const [editMode, setEditMode] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
   const inputRef = useRef<HTMLInputElement | null>(null);
   const certificateInputRef = useRef<HTMLInputElement | null>(null);
@@ -52,6 +52,8 @@ export default function ProfileModule() {
   const [previewCert, setPreviewCert] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toasts, setToasts] = useState<Array<{ id: string; type?: "info" | "success" | "error"; message: string; visible: boolean }>>([]);
+  const { language } = useLanguage();
+  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
 
   const showToast = (message: string, type: "info" | "success" | "error" = "info", timeout = 4000) => {
     const id = String(Date.now()) + Math.random().toString(36).slice(2, 7);
@@ -127,21 +129,6 @@ export default function ProfileModule() {
     };
   }, [router]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = (localStorage.getItem("profileTheme") as "light" | "dark" | null) ?? null;
-    if (stored === "dark" || stored === "light") {
-      setTheme(stored);
-    } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("profileTheme", theme);
-  }, [theme]);
-
   const validateForm = (state: FormState) => {
     const nextErrors: Record<string, string> = {};
     if (!state.fullName.trim()) nextErrors.fullName = "Укажите имя";
@@ -169,7 +156,7 @@ export default function ProfileModule() {
     const validation = validateForm(form);
     setErrors(validation);
     if (Object.keys(validation).length > 0) {
-      showToast("Заполните обязательные поля", "error");
+      showToast(tr("Заполните обязательные поля", "Please fill required fields"), "error");
       return;
     }
     setSaving(true);
@@ -222,10 +209,10 @@ export default function ProfileModule() {
         certificates: normalized.certificates.map((c) => ({ title: c.title, url: c.url })),
       });
       setEditMode(false);
-      showToast("Профиль сохранён", "success");
+      showToast(tr("Профиль сохранён", "Profile saved"), "success");
     } catch (err: any) {
       console.error("Save error:", err);
-      showToast(err?.message ?? "Ошибка при сохранении профиля", "error");
+      showToast(err?.message ?? tr("Ошибка при сохранении профиля", "Error saving profile"), "error");
     } finally {
       setSaving(false);
     }
@@ -331,9 +318,9 @@ export default function ProfileModule() {
         },
         certificates: normalizedCurrent.certificates.map((c) => ({ title: c.title, url: c.url })),
       });
-      showToast("Изменения откатены", "success");
+      showToast(tr("Изменения откатены", "Changes reverted"), "success");
     } catch (err: any) {
-      showToast(err?.message ?? "Ошибка при откате", "error");
+      showToast(err?.message ?? tr("Ошибка при откате", "Error while reverting"), "error");
     } finally {
       setSaving(false);
     }
@@ -414,11 +401,11 @@ export default function ProfileModule() {
   const handleFile = (f: File) => {
     const allowed = ["image/png", "image/jpeg"];
     if (!allowed.includes(f.type)) {
-      showToast("Разрешены только PNG и JPG (jpeg). SVG и другие форматы отклоняются.", "error");
+      showToast(tr("Разрешены только PNG и JPG (jpeg). SVG и другие форматы отклоняются.", "Only PNG and JPG (jpeg) are allowed. SVG and other formats are rejected."), "error");
       return;
     }
     if (f.size > MAX_AVATAR_BYTES) {
-      showToast(`Файл слишком большой — максимум ${humanFileSize(MAX_AVATAR_BYTES)}`, "error");
+      showToast(tr(`Файл слишком большой — максимум ${humanFileSize(MAX_AVATAR_BYTES)}`, `File is too large — max ${humanFileSize(MAX_AVATAR_BYTES)}`), "error");
       return;
     }
     setAvatarFile(f);
@@ -432,7 +419,7 @@ export default function ProfileModule() {
     const files = Array.from(fileList);
     const nonPdf = files.filter((f) => f.type !== "application/pdf");
     if (nonPdf.length > 0) {
-      showToast("Сертификаты принимаются только в формате PDF.", "error");
+      showToast(tr("Сертификаты принимаются только в формате PDF.", "Certificates must be PDF only."), "error");
       return;
     }
     setForm((prev) => ({
@@ -451,11 +438,11 @@ export default function ProfileModule() {
   if (unauthenticated)
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <h1 className="text-2xl font-semibold mb-4">Мой профиль</h1>
-        <p className="mb-4">Вы не авторизованы. Пожалуйста, войдите, чтобы посмотреть или редактировать профиль.</p>
+        <h1 className="text-2xl font-semibold mb-4">{tr("Мой профиль", "My profile")}</h1>
+        <p className="mb-4">{tr("Вы не авторизованы. Пожалуйста, войдите, чтобы посмотреть или редактировать профиль.", "You are not signed in. Please log in to view or edit your profile.")}</p>
         <div className="flex gap-2">
           <button onClick={() => router.push('/login')} className="px-4 py-2 rounded bg-blue-600 text-white">
-            Войти
+            {tr("Войти", "Log in")}
           </button>
         </div>
       </div>
@@ -471,10 +458,10 @@ export default function ProfileModule() {
   });
 
   const achievements = [
-    { label: "Био заполнено", ok: completionInfo.parts.find((p) => p.label === "О себе")?.ok },
-    { label: "Фото загружено", ok: completionInfo.parts.find((p) => p.label === "Фото")?.ok },
-    { label: "Ссылки добавлены", ok: completionInfo.parts.find((p) => p.label === "Ссылки")?.ok },
-    { label: "Сертификаты", ok: completionInfo.parts.find((p) => p.label === "Сертификаты")?.ok },
+    { label: tr("Био заполнено", "Bio filled"), ok: completionInfo.parts.find((p) => p.label === "О себе")?.ok },
+    { label: tr("Фото загружено", "Photo uploaded"), ok: completionInfo.parts.find((p) => p.label === "Фото")?.ok },
+    { label: tr("Ссылки добавлены", "Links added"), ok: completionInfo.parts.find((p) => p.label === "Ссылки")?.ok },
+    { label: tr("Сертификаты", "Certificates"), ok: completionInfo.parts.find((p) => p.label === "Сертификаты")?.ok },
   ];
   const linkIcons: Record<string, JSX.Element> = {
     github: (
@@ -499,21 +486,20 @@ export default function ProfileModule() {
     ),
   };
 
-  const isDark = theme === "dark";
-  const themeBg = isDark ? "from-slate-900 via-slate-800 to-slate-900" : "from-sky-800 via-cyan-700 to-emerald-600";
-  const overlayTint = isDark ? "bg-slate-950/60" : "bg-white/70";
-  const panelBg = isDark ? "bg-slate-900/80 border-slate-800 text-gray-100" : "bg-white/85 border-indigo-50 text-gray-900";
-  const cardBg = isDark ? "bg-slate-900/80 border-slate-800 text-gray-100" : "bg-white/80 border-indigo-50 text-gray-900";
-  const cardShadow = isDark ? "shadow-slate-900/40" : "shadow-indigo-100/70";
+  const themeBg = "from-sky-800 via-cyan-700 to-emerald-600";
+  const overlayTint = "bg-white/70";
+  const panelBg = "bg-white/85 border-indigo-50 text-gray-900";
+  const cardBg = "bg-white/80 border-indigo-50 text-gray-900";
+  const cardShadow = "shadow-indigo-100/70";
   const avatarBusy = saving && (avatarFile || (profile?.avatarUrl && !avatarPreview));
-  const labelTone = isDark ? "text-gray-200" : "text-gray-700";
-  const subtleTone = isDark ? "text-gray-400" : "text-gray-500";
-  const linkTone = isDark ? "text-indigo-200" : "text-indigo-700";
-  const linkSubtle = isDark ? "text-gray-300" : "text-gray-600";
-  const accentBubble = isDark ? "bg-slate-800" : "bg-indigo-100";
+  const labelTone = "text-gray-700";
+  const subtleTone = "text-gray-500";
+  const linkTone = "text-indigo-700";
+  const linkSubtle = "text-gray-600";
+  const accentBubble = "bg-indigo-100";
 
   return (
-    <div className={`relative max-w-4xl mx-auto p-6 md:p-8 ${isDark ? "text-gray-100" : "text-gray-900"}`}>
+    <div className="relative max-w-4xl mx-auto p-6 md:p-8 text-gray-900">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(99,102,241,0.14),transparent_35%),radial-gradient(circle_at_85%_10%,rgba(236,72,153,0.12),transparent_35%),radial-gradient(circle_at_20%_90%,rgba(16,185,129,0.12),transparent_30%)] opacity-90" />
         <div className={`absolute inset-4 rounded-[32px] ${overlayTint} blur-3xl`} />
@@ -558,23 +544,17 @@ export default function ProfileModule() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.25em] text-white/70">Профиль</p>
-              <h1 className="text-3xl font-semibold leading-tight">Мой профиль</h1>
+              <h1 className="text-3xl font-semibold leading-tight">{tr("Мой профиль", "My profile")}</h1>
               <p className="text-sm opacity-90 max-w-2xl">
-                Удобное место, где можно обновить свою историю, фото и ссылки на важные проекты.
+                {tr("Удобное место, где можно обновить свою историю, фото и ссылки на важные проекты.", "A handy place to update your story, photo, and important links.")}
               </p>
               <div className="flex flex-wrap gap-2 text-xs text-white/80">
-                <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">Быстрые правки</span>
-                <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">Важные ссылки</span>
-                <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">Сертификаты</span>
+                <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">{tr("Быстрые правки", "Quick edits")}</span>
+                <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">{tr("Важные ссылки", "Important links")}</span>
+                <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">{tr("Сертификаты", "Certificates")}</span>
               </div>
             </div>
             <div className="flex flex-wrap gap-3 items-center justify-end">
-              <button
-                onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-                className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur hover:bg-white/20 transition"
-              >
-                {isDark ? "Светлая тема" : "Тёмная тема"}
-              </button>
               <button
                 onClick={rollbackLast}
                 disabled={!history.length || saving}
@@ -588,7 +568,7 @@ export default function ProfileModule() {
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="rounded-2xl border border-white/30 bg-white/10 backdrop-blur px-4 py-3 shadow-lg shadow-indigo-900/20 w-full sm:w-auto">
-              <div className="text-[11px] uppercase tracking-wide text-white/70">Заполненность</div>
+              <div className="text-[11px] uppercase tracking-wide text-white/70">{tr("Заполненность", "Completion")}</div>
               <div className="mt-2 flex items-center gap-3">
                 <div className="text-3xl font-semibold">{completionInfo.percent}%</div>
                 <div className="h-2 w-full sm:w-28 rounded-full bg-white/20 overflow-hidden">
@@ -597,8 +577,8 @@ export default function ProfileModule() {
               </div>
               <div className="mt-2 text-xs text-white/80">
                 {completionInfo.missing.length > 0
-                  ? `Добавьте: ${completionInfo.missing.join(", ")}`
-                  : "Отлично, всё заполнено!"}
+                  ? tr(`Добавьте: ${completionInfo.missing.join(", ")}`, `Add: ${completionInfo.missing.join(", ")}`)
+                  : tr("Отлично, всё заполнено!", "Great, everything is filled!")}
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {(completionInfo.missing.length ? completionInfo.missing : ["Готово"]).map((tag) => (
@@ -612,9 +592,9 @@ export default function ProfileModule() {
               </div>
             </div>
             <div className="rounded-2xl border border-white/20 bg-black/10 px-4 py-3 backdrop-blur-sm w-full sm:w-auto">
-              <div className="text-sm font-semibold">Документы</div>
+              <div className="text-sm font-semibold">{tr("Документы", "Documents")}</div>
               <div className="text-2xl font-semibold leading-tight">{normalizedSettings.certificates.length}</div>
-              <div className="text-xs text-white/70">сертификатов в профиле</div>
+              <div className="text-xs text-white/70">{tr("сертификатов в профиле", "certificates in profile")}</div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -660,7 +640,7 @@ export default function ProfileModule() {
               <div className="text-center">
                 <div className="text-lg font-medium">{profile?.fullName ?? user?.name ?? 'Без имени'}</div>
                 <div className={`text-sm mt-1 ${subtleTone}`}>{user?.role ?? '—'}</div>
-                <div className={`mt-3 text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>{profile?.email ?? '—'}</div>
+                <div className="mt-3 text-sm text-gray-600">{profile?.email ?? '—'}</div>
               </div>
 
             <div className="mt-6 w-full flex gap-2">
@@ -668,7 +648,7 @@ export default function ProfileModule() {
                 onClick={() => setEditMode(!editMode)}
                 className="w-full px-4 py-2 rounded-md bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow-md shadow-indigo-200/60 hover:brightness-110 transition"
               >
-                {editMode ? 'Отмена' : 'Редактировать профиль'}
+                {editMode ? tr("Отмена", "Cancel") : tr("Редактировать профиль", "Edit profile")}
               </button>
               {history.length > 0 && (
                 <button
@@ -687,30 +667,30 @@ export default function ProfileModule() {
         {/* Edit / Details Panel */}
         <div className={`col-span-1 md:col-span-2 ${panelBg} backdrop-blur rounded-2xl p-6 md:p-7 shadow-lg ${cardShadow}`}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Данные профиля</h2>
-            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">Обновлено сейчас</span>
+            <h2 className="text-lg font-semibold text-gray-900">{tr("Данные профиля", "Profile data")}</h2>
+            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">{tr("Обновлено сейчас", "Updated now")}</span>
           </div>
 
           {!editMode && (
             <div className="space-y-4">
               <div>
-                <div className={`text-sm ${subtleTone}`}>Полное имя</div>
+                <div className={`text-sm ${subtleTone}`}>{tr("Полное имя", "Full name")}</div>
                 <div className="mt-1 text-base">{profile?.fullName ?? '—'}</div>
               </div>
 
               <div>
-                <div className={`text-sm ${subtleTone}`}>О себе</div>
+                <div className={`text-sm ${subtleTone}`}>{tr("О себе", "About")}</div>
                 <div className="mt-1 text-base whitespace-pre-wrap">{profile?.bio ?? '—'}</div>
               </div>
 
               <div>
-                <div className={`text-sm ${subtleTone}`}>Сертификаты (PDF)</div>
+                <div className={`text-sm ${subtleTone}`}>{tr("Сертификаты (PDF)", "Certificates (PDF)")}</div>
                 <div className="mt-2 space-y-2">
                   {normalizedSettings.certificates.length > 0 ? (
                     normalizedSettings.certificates.map((c, idx) => (
                       <div
                         key={idx}
-                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${linkTone} ${isDark ? "border-slate-700 bg-slate-800/60 hover:bg-slate-800" : "hover:bg-indigo-50"}`}
+                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${linkTone} hover:bg-indigo-50`}
                       >
                         <button
                           type="button"
@@ -734,7 +714,7 @@ export default function ProfileModule() {
               </div>
 
               <div>
-                <div className={`text-sm ${subtleTone}`}>Полезные ссылки</div>
+                <div className={`text-sm ${subtleTone}`}>{tr("Полезные ссылки", "Useful links")}</div>
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {Object.entries(normalizedSettings.links).filter(([, v]) => v).length > 0 ? (
                     Object.entries(normalizedSettings.links)
@@ -745,24 +725,24 @@ export default function ProfileModule() {
                           href={v}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
+                          className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${linkTone} hover:bg-indigo-50`}
                         >
                           <span className="flex items-center gap-2 capitalize">
                             <span className="text-indigo-600">{linkIcons[k] ?? linkIcons.other}</span>
                             {k}
                           </span>
-                          <span className="truncate pl-2 text-gray-600">{readableLink(v)}</span>
+                          <span className={`truncate pl-2 ${linkSubtle}`}>{readableLink(v)}</span>
                         </a>
                       ))
                   ) : (
-                    <div className={`text-sm ${subtleTone}`}>Нет добавленных ссылок.</div>
+                    <div className={`text-sm ${subtleTone}`}>{tr("Нет добавленных ссылок.", "No links yet.")}</div>
                   )}
                 </div>
               </div>
 
               <div className="pt-4">
                 <button onClick={() => setEditMode(true)} className="px-4 py-2 rounded-md bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 transition">
-                  Редактировать
+                  {tr("Редактировать", "Edit")}
                 </button>
               </div>
             </div>
@@ -771,7 +751,7 @@ export default function ProfileModule() {
           {editMode && (
             <form onSubmit={save} className="space-y-4">
               <div>
-                <label className={`block text-sm font-medium ${labelTone}`}>Аватар</label>
+                <label className={`block text-sm font-medium ${labelTone}`}>{tr("Аватар", "Avatar")}</label>
                 <div className="mt-2 flex items-center gap-4">
                   <div className="flex items-center gap-4">
                     <div
@@ -820,7 +800,7 @@ export default function ProfileModule() {
                             }}
                             className="px-2 py-1 bg-white/90 text-sm rounded text-gray-800"
                           >
-                            Изменить
+                            {tr("Изменить", "Change")}
                           </button>
                           {avatarPreview && (
                             <button
@@ -832,7 +812,7 @@ export default function ProfileModule() {
                               }}
                               className="px-2 py-1 bg-white/90 text-sm rounded text-red-600"
                             >
-                              Удалить
+                              {tr("Удалить", "Remove")}
                             </button>
                           )}
                         </div>
@@ -865,7 +845,7 @@ export default function ProfileModule() {
                 </div>
               </div>
               <div>
-                <label className={`block text-sm font-medium ${labelTone}`}>Полное имя</label>
+                <label className={`block text-sm font-medium ${labelTone}`}>{tr("Полное имя", "Full name")}</label>
                 <input
                   value={form.fullName}
                   onChange={(e) => {
@@ -873,34 +853,34 @@ export default function ProfileModule() {
                     setForm({ ...form, fullName: e.target.value });
                   }}
                   className={`mt-1 block w-full border rounded p-2 ${errors.fullName ? "border-red-500 ring-1 ring-red-300" : ""}`}
-                  placeholder="Иван Иванов"
+                  placeholder={tr("Иван Иванов", "John Doe")}
                 />
                 {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
               </div>
 
               <div>
-                <label className={`block text-sm font-medium ${labelTone}`}>О себе</label>
+                <label className={`block text-sm font-medium ${labelTone}`}>{tr("О себе", "About")}</label>
                 <textarea
                   value={form.bio}
                   onChange={(e) => setForm({ ...form, bio: e.target.value })}
                   rows={6}
                   className="mt-1 block w-full border rounded p-2"
-                  placeholder="Короткая биография"
+                  placeholder={tr("Короткая биография", "Short bio")}
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between">
-                  <label className={`block text-sm font-medium ${labelTone}`}>Сертификаты (PDF)</label>
+                  <label className={`block text-sm font-medium ${labelTone}`}>{tr("Сертификаты (PDF)", "Certificates (PDF)")}</label>
                   <button
                     type="button"
                     onClick={() => certificateInputRef.current?.click()}
                     className="text-sm text-indigo-600 hover:text-indigo-700"
                   >
-                    Загрузить файл
+                    {tr("Загрузить файл", "Upload file")}
                   </button>
                 </div>
-                <p className={`mt-1 text-xs ${subtleTone}`}>Прикрепите PDF-файлы сертификатов. Их можно переименовать ниже.</p>
+                <p className={`mt-1 text-xs ${subtleTone}`}>{tr("Прикрепите PDF-файлы сертификатов. Их можно переименовать ниже.", "Attach certificate PDFs. You can rename them below.")}</p>
                 <input
                   ref={certificateInputRef}
                   type="file"
@@ -914,7 +894,7 @@ export default function ProfileModule() {
                 />
                 <div className="mt-3 space-y-2">
                   {form.certificates.length === 0 && (
-                    <div className="text-sm text-gray-500">Пока нет прикреплённых сертификатов.</div>
+                    <div className="text-sm text-gray-500">{tr("Пока нет прикреплённых сертификатов.", "No certificates yet.")}</div>
                   )}
                   {form.certificates.map((c, idx) => (
                     <div key={idx} className="flex flex-col rounded border px-3 py-2 gap-2">
@@ -927,7 +907,7 @@ export default function ProfileModule() {
                             setForm({ ...form, certificates: next });
                           }}
                           className="flex-1 rounded border px-3 py-2 text-sm"
-                          placeholder="Название сертификата"
+                          placeholder={tr("Название сертификата", "Certificate title")}
                         />
                         <button
                           type="button"
@@ -1015,7 +995,7 @@ export default function ProfileModule() {
 
               <div className="flex gap-3">
                 <button type="submit" disabled={saving} className="px-4 py-2 rounded bg-blue-600 text-white">
-                  {saving ? 'Сохранение…' : 'Сохранить'}
+                  {saving ? tr("Сохранение…", "Saving…") : tr("Сохранить", "Save")}
                 </button>
                 <button
                   type="button"
@@ -1037,7 +1017,7 @@ export default function ProfileModule() {
                   }}
                   className="px-4 py-2 rounded border bg-white text-gray-700"
                 >
-                  Отмена
+                  {tr("Отмена", "Cancel")}
                 </button>
               </div>
             </form>

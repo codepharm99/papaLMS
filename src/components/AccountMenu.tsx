@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, Settings, User, Book } from "lucide-react";
+import { useLanguage } from "@/components/language-context";
 
 type UserShort = { id: string; name?: string; role?: string } | null;
 
@@ -11,6 +12,8 @@ export default function AccountMenu({ user }: { user: UserShort }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+  const { language } = useLanguage();
+  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -48,7 +51,7 @@ export default function AccountMenu({ user }: { user: UserShort }) {
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-800 hover:ring-2 hover:ring-offset-2 hover:ring-gray-200"
-        title={user?.name ?? "Акаунт"}
+        title={user?.name ?? tr("Аккаунт", "Account")}
       >
         {initials}
       </button>
@@ -58,11 +61,11 @@ export default function AccountMenu({ user }: { user: UserShort }) {
           <div className="p-2">
             <Link href="/profile" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
               <User className="h-4 w-4 text-gray-500" />
-              Профиль
+              {tr("Профиль", "Profile")}
             </Link>
             <Link href="/profile/settings" onClick={() => setOpen(false)} className="mt-1 flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50">
               <Settings className="h-4 w-4 text-gray-500" />
-              Настройки
+              {tr("Настройки", "Settings")}
             </Link>
             <Link
               href={user?.role === "TEACHER" ? "/teacher/courses" : "/student/courses"}
@@ -70,17 +73,17 @@ export default function AccountMenu({ user }: { user: UserShort }) {
               className="mt-1 flex items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               <Book className="h-4 w-4 text-gray-500" />
-              Мои курсы
+              {tr("Мои курсы", "My courses")}
             </Link>
           </div>
           <div className="p-2">
             <button
               onClick={doLogout}
               className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-red-600 hover:bg-red-50"
-              title="Выйти"
+              title={tr("Выйти", "Logout")}
             >
               <LogOut className="h-4 w-4 text-red-600" />
-              Выйти
+              {tr("Выйти", "Logout")}
             </button>
           </div>
         </div>
