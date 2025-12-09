@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npm run db:setup && next dev",
+    "dev": "next dev",
     "build": "npm run db:deploy && next build",
     "start": "npm run db:deploy && next start",
     "lint": "eslint",

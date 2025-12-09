@@ -24,12 +24,12 @@ cp .env .env.local   # если нужно
 ```
 npm i
 npx prisma db push --accept-data-loss   # синхронизирует схему, генерирует клиента
-npm run seed                            # создаст тестовые данные
+npm run seed                            # создаст тестовые данные (один раз)
 ```
 
 3) Запуск dev-сервера:
 ```
-npm run dev
+npm run dev                             # теперь не пересоздаёт/не пересеивает БД на каждый запуск
 # http://localhost:3000
 ```
 
@@ -86,6 +86,7 @@ npm run dev
   - `src/app/tests/[code]/page.tsx` — страница по публичному коду/QR: ввод имени, ответы, вывод результата; попытка сохраняется как гостевая с оценкой
 - Админ:
   - `src/app/admin/invites/page.tsx` — инвайты для регистрации преподавателей
+  - `src/app/admin/users/page.tsx` — просмотр списков преподавателей и студентов
 
 API (основное):
 - `/api/auth/login|register|me`

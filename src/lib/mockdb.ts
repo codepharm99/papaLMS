@@ -732,6 +732,40 @@ export async function listStudents(): Promise<Array<{ id: string; name: string }
   return users.map(u => ({ id: u.id, name: u.name }));
 }
 
+export async function listStudentsForAdmin(): Promise<
+  Array<{ id: string; name: string; username: string; createdAt: number; count: number }>
+> {
+  const users = await prisma.user.findMany({
+    where: { role: "STUDENT" },
+    orderBy: { name: "asc" },
+    include: { _count: { select: { enrolls: true } } },
+  });
+  return users.map(u => ({
+    id: u.id,
+    name: u.name,
+    username: u.username,
+    createdAt: u.createdAt.getTime(),
+    count: u._count.enrolls ?? 0,
+  }));
+}
+
+export async function listTeachersForAdmin(): Promise<
+  Array<{ id: string; name: string; username: string; createdAt: number; count: number }>
+> {
+  const users = await prisma.user.findMany({
+    where: { role: "TEACHER" },
+    orderBy: { name: "asc" },
+    include: { _count: { select: { courses: true } } },
+  });
+  return users.map(u => ({
+    id: u.id,
+    name: u.name,
+    username: u.username,
+    createdAt: u.createdAt.getTime(),
+    count: u._count.courses ?? 0,
+  }));
+}
+
 export async function assignTestToStudent(
   teacher: User,
   data: { testId: string; studentId: string; dueAt?: string | null }

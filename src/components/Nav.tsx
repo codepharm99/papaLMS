@@ -49,6 +49,8 @@ export default function Nav() {
     pathname.startsWith("/teacher/courses");
   const isAuthPage = pathname.startsWith("/login");
   const isStudentTests = pathname.startsWith("/student/tests");
+  const isAdminUsers = pathname.startsWith("/admin/users");
+  const isAdminInvites = pathname.startsWith("/admin/invites");
 
   return (
     <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
@@ -77,7 +79,10 @@ export default function Nav() {
             <NavLink href="/teacher/tools" label="Инструменты" isActive={pathname.startsWith("/teacher/tools")} />
           )}
           {user?.role === "ADMIN" && (
-            <NavLink href="/admin/invites" label="Коды преподавателей" isActive={pathname.startsWith("/admin/invites")} />
+            <>
+              <NavLink href="/admin/users" label="Пользователи" isActive={isAdminUsers} />
+              <NavLink href="/admin/invites" label="Коды преподавателей" isActive={isAdminInvites} />
+            </>
           )}
         </nav>
 
