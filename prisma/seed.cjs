@@ -86,6 +86,8 @@ async function main() {
     }),
   ]);
 
+  //dsiplay courses map for easy access
+
   const courseMap = Object.fromEntries(courses.map(course => [course.id, course]));
 
   await prisma.enrollment.upsert({
