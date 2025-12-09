@@ -95,7 +95,7 @@ async function main() {
     update: {},
     create: { id: "e1", userId: student.id, courseId: courseMap.c2.id },
   });
-
+// Seed materials for ML201 course
   const now = Date.now();
   await upsertMaterial({
     id: "m1",
