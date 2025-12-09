@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useCurrentUser } from "@/components/user-context";
+import { useLanguage } from "@/components/language-context";
 
 type SlideDraft = { id: string; text: string; imageDataUrl?: string };
 type Presentation = { id: string; title: string; slides: SlideDraft[]; createdAt: number };
@@ -17,15 +18,17 @@ function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
+    reader.onerror = () => reject(new Error("read-failed"));
     reader.readAsDataURL(file);
   });
 }
 
 export default function PresentationsTool() {
   const { user } = useCurrentUser();
+  const { language } = useLanguage();
+  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
 
-  const [presentationTitle, setPresentationTitle] = useState("Новая презентация");
+  const [presentationTitle, setPresentationTitle] = useState(tr("Новая презентация", "New presentation"));
   const [slides, setSlides] = useState<SlideDraft[]>([{ id: makeId(), text: "" }]);
   const [presentations, setPresentations] = useState<Presentation[]>([]);
   const [liveSlides, setLiveSlides] = useState<SlideDraft[]>([]);
@@ -50,7 +53,7 @@ export default function PresentationsTool() {
       const dataUrl = await fileToDataUrl(file);
       setSlides(prev => prev.map(s => (s.id === id ? { ...s, imageDataUrl: dataUrl } : s)));
     } catch {
-      alert("Не удалось загрузить изображение");
+      alert(tr("Не удалось загрузить изображение", "Failed to load image"));
     }
   };
 
@@ -64,17 +67,17 @@ export default function PresentationsTool() {
   };
 
   const resetPresentationDraft = () => {
-    setPresentationTitle("Новая презентация");
+    setPresentationTitle(tr("Новая презентация", "New presentation"));
     setSlides([{ id: makeId(), text: "" }]);
   };
 
   const savePresentation = () => {
-    const safeTitle = presentationTitle.trim() || "Без названия";
+    const safeTitle = presentationTitle.trim() || tr("Без названия", "Untitled");
     const preparedSlides = slides
       .map(s => ({ ...s, text: s.text.trim() }))
       .filter(s => s.text || s.imageDataUrl);
     if (preparedSlides.length === 0) {
-      alert("Добавьте хотя бы один слайд с текстом или изображением");
+      alert(tr("Добавьте хотя бы один слайд с текстом или изображением", "Add at least one slide with text or image"));
       return;
     }
     const created: Presentation = { id: makeId(), title: safeTitle, slides: preparedSlides, createdAt: Date.now() };
@@ -85,7 +88,7 @@ export default function PresentationsTool() {
   const startPresentation = (p: Presentation) => {
     const slidesToShow = p.slides.filter(s => s.text || s.imageDataUrl);
     if (slidesToShow.length === 0) {
-      alert("В презентации нет слайдов для показа");
+      alert(tr("В презентации нет слайдов для показа", "Presentation has no slides to show"));
       return;
     }
     setLiveSlides(slidesToShow);
@@ -158,38 +161,38 @@ export default function PresentationsTool() {
       setCopiedId(p.id);
       setTimeout(() => setCopiedId(prev => (prev === p.id ? null : prev)), 2000);
     } catch {
-      alert("Не удалось скопировать ссылку");
+      alert(tr("Не удалось скопировать ссылку", "Failed to copy link"));
     }
   };
 
   if (!user) {
-    return <div className="text-gray-500">Нужно войти.</div>;
+    return <div className="text-gray-500">{tr("Нужно войти.", "You need to log in.")}</div>;
   }
 
   if (user.role !== "TEACHER") {
-    return <div className="text-gray-500">Доступ только для преподавателей.</div>;
+    return <div className="text-gray-500">{tr("Доступ только для преподавателей.", "Teachers only.")}</div>;
   }
 
   return (
     <div className="space-y-5">
       <Breadcrumbs
         items={[
-          { label: "Инструменты", href: "/teacher/tools" },
-          { label: "Презентации" },
+          { label: tr("Инструменты", "Tools"), href: "/teacher/tools" },
+          { label: tr("Презентации", "Presentations") },
         ]}
       />
-      <div className="space-y-1">
-        <div className="text-xs uppercase tracking-wide text-gray-500">Инструменты преподавателя</div>
-        <h1 className="text-2xl font-semibold">Генератор презентаций</h1>
-        <p className="text-sm text-gray-600">
-          Черновики хранятся только в этом браузере. Для показа нажмите «Показать студентам» — откроется полноэкранный режим без всплывающих окон.
+      <div className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-600 p-6 text-white shadow-xl shadow-indigo-200/50">
+        <div className="text-xs uppercase tracking-[0.3em] text-white/70">{tr("Инструменты преподавателя", "Teacher tools")}</div>
+        <h1 className="mt-2 text-2xl font-bold">{tr("Генератор презентаций", "Presentation generator")}</h1>
+        <p className="text-sm text-white/85">
+          {tr("Черновики хранятся только в этом браузере. Для показа нажмите «Показать студентам» — откроется полноэкранный режим без всплывающих окон.", "Drafts live only in this browser. Use “Present to students” for fullscreen without pop-ups.")}
         </p>
       </div>
 
       <div className="rounded-2xl border bg-white p-5 space-y-3 shadow-sm">
         <input
           className="w-full rounded-xl border px-3 py-2"
-          placeholder="Название презентации"
+          placeholder={tr("Название презентации", "Presentation title")}
           value={presentationTitle}
           onChange={(e) => setPresentationTitle(e.target.value)}
         />
@@ -198,19 +201,19 @@ export default function PresentationsTool() {
           {slides.map((slide, idx) => (
             <div key={slide.id} className="rounded-xl border p-3 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <div className="text-xs text-gray-500">Слайд {idx + 1}</div>
+                <div className="text-xs text-gray-500">{tr("Слайд", "Slide")} {idx + 1}</div>
                 <button
                   type="button"
                   onClick={() => removeSlide(slide.id)}
                   className="text-xs text-red-500 underline disabled:opacity-50"
                   disabled={slides.length === 1}
                 >
-                  Удалить
+                  {tr("Удалить", "Delete")}
                 </button>
               </div>
 
               <label className="block text-sm font-medium text-gray-700">
-                Изображение (опционально)
+                {tr("Изображение (опционально)", "Image (optional)")}
                 <input
                   type="file"
                   accept="image/*"
@@ -230,10 +233,10 @@ export default function PresentationsTool() {
               )}
 
               <label className="block text-sm font-medium text-gray-700">
-                Текст для слайда
+                {tr("Текст для слайда", "Slide text")}
                 <textarea
                   className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                  placeholder="Краткий тезис, подписи к фото или список"
+                  placeholder={tr("Краткий тезис, подписи к фото или список", "Short bullet, captions, or a list")}
                   value={slide.text}
                   onChange={(e) => updateSlideText(slide.id, e.target.value)}
                 />
@@ -248,30 +251,32 @@ export default function PresentationsTool() {
             onClick={addSlide}
             className="rounded-xl border px-3 py-2 text-sm hover:border-gray-400"
           >
-            Добавить слайд
+            {tr("Добавить слайд", "Add slide")}
           </button>
           <button
             type="button"
             onClick={resetPresentationDraft}
             className="rounded-xl border px-3 py-2 text-sm hover:border-gray-400"
           >
-            Очистить черновик
+            {tr("Очистить черновик", "Clear draft")}
           </button>
           <button
             type="button"
             onClick={savePresentation}
             className="rounded-xl bg-gray-900 px-3 py-2 text-sm text-white"
           >
-            Создать черновик
+            {tr("Создать черновик", "Save draft")}
           </button>
-          <div className="text-xs text-gray-500">Для показа используйте кнопку ниже — он откроется в этом окне с возможностью полноэкранного режима.</div>
+          <div className="text-xs text-gray-500">
+            {tr("Для показа используйте кнопку ниже — он откроется в этом окне с возможностью полноэкранного режима.", "Use the button below to present in this window with fullscreen.")}
+          </div>
         </div>
       </div>
 
       {presentations.length > 0 && (
         <div className="rounded-2xl border bg-white p-4 space-y-2 shadow-sm">
-          <div className="text-sm font-semibold">Черновики презентаций</div>
-          <div className="text-xs text-gray-500">Локально в браузере (исчезнут после перезагрузки).</div>
+          <div className="text-sm font-semibold">{tr("Черновики презентаций", "Presentation drafts")}</div>
+          <div className="text-xs text-gray-500">{tr("Локально в браузере (исчезнут после перезагрузки).", "Stored locally in this browser (lost after reload).")}</div>
           <ul className="space-y-2">
             {presentations.map(p => (
               <li key={p.id} className="rounded-xl border p-3">
@@ -279,7 +284,7 @@ export default function PresentationsTool() {
                   <div>
                     <div className="font-medium">{p.title}</div>
                     <div className="text-xs text-gray-500">
-                      Слайдов: {p.slides.length} · {new Date(p.createdAt).toLocaleString()}
+                      {tr("Слайдов", "Slides")}: {p.slides.length} · {new Date(p.createdAt).toLocaleString()}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -288,7 +293,7 @@ export default function PresentationsTool() {
                       onClick={() => startPresentation(p)}
                       className="rounded-xl bg-green-600 px-3 py-2 text-sm font-medium text-white"
                     >
-                      Показать студентам
+                      {tr("Показать студентам", "Present to students")}
                     </button>
                     {shareBase ? (
                       <>
@@ -298,25 +303,25 @@ export default function PresentationsTool() {
                           rel="noreferrer"
                           className="rounded-xl border px-3 py-2 text-sm hover:border-gray-400"
                         >
-                          Открыть ссылку
+                          {tr("Открыть ссылку", "Open link")}
                         </a>
                         <button
                           type="button"
                           onClick={() => copyLink(p)}
                           className="rounded-xl border px-3 py-2 text-sm hover:border-gray-400"
                         >
-                          {copiedId === p.id ? "Ссылка скопирована" : "Скопировать ссылку"}
+                          {copiedId === p.id ? tr("Ссылка скопирована", "Link copied") : tr("Скопировать ссылку", "Copy link")}
                         </button>
                       </>
                     ) : (
-                      <span className="text-xs text-gray-500">Ссылка появится после загрузки страницы</span>
+                      <span className="text-xs text-gray-500">{tr("Ссылка появится после загрузки страницы", "Link appears after page load")}</span>
                     )}
                     <button
                       type="button"
                       onClick={() => setPresentations(prev => prev.filter(x => x.id !== p.id))}
                       className="rounded-xl border px-3 py-2 text-sm hover:border-gray-400"
                     >
-                      Удалить
+                      {tr("Удалить", "Delete")}
                     </button>
                   </div>
                 </div>
@@ -332,7 +337,7 @@ export default function PresentationsTool() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs uppercase tracking-wide text-gray-600">
-                  Показ для студентов
+                  {tr("Показ для студентов", "Student view")}
                 </div>
                 <div className="text-xl font-semibold">{livePresentation.title}</div>
               </div>
@@ -345,14 +350,14 @@ export default function PresentationsTool() {
                   onClick={requestFullscreen}
                   className="rounded-lg border border-gray-300 px-3 py-2 text-sm hover:border-gray-500"
                 >
-                  Во весь экран
+                  {tr("Во весь экран", "Fullscreen")}
                 </button>
                 <button
                   type="button"
                   onClick={stopPresentation}
                   className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white"
                 >
-                  Закрыть
+                  {tr("Закрыть", "Close")}
                 </button>
               </div>
             </div>
@@ -394,7 +399,7 @@ export default function PresentationsTool() {
                   </div>
                 )}
                 {!liveHasImage && !liveHasText && (
-                  <div className="text-center text-gray-500">Слайд пустой</div>
+                  <div className="text-center text-gray-500">{tr("Слайд пустой", "Slide is empty")}</div>
                 )}
               </div>
             </div>
@@ -405,15 +410,17 @@ export default function PresentationsTool() {
                 onClick={prevSlide}
                 className="rounded-xl border border-gray-300 px-4 py-2 text-sm hover:border-gray-500"
               >
-                ← Назад
+                ← {tr("Назад", "Back")}
               </button>
-              <div className="text-xs text-gray-500">Пробел/→ — далее, ← — назад, Esc — выйти</div>
+              <div className="text-xs text-gray-500">
+                {tr("Пробел/→ — далее, ← — назад, Esc — выйти", "Space/→ next, ← back, Esc to exit")}
+              </div>
               <button
                 type="button"
                 onClick={nextSlide}
                 className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white"
               >
-                Далее →
+                {tr("Далее", "Next")} →
               </button>
             </div>
           </div>

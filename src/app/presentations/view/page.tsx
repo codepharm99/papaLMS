@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useLanguage } from "@/components/language-context";
 
 type Slide = { text: string; imageDataUrl?: string };
 type Payload = { title: string; slides: Slide[] };
@@ -15,19 +16,21 @@ function decodePayload(raw: string): Payload {
 
 function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
   const [index, setIndex] = useState(0);
+  const { language } = useLanguage();
+  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
 
   const { data, error } = useMemo(() => {
-    if (!payloadParam) return { data: null, error: "Ссылка не содержит данных презентации." };
+    if (!payloadParam) return { data: null, error: tr("Ссылка не содержит данных презентации.", "Link has no presentation data.") };
     try {
       const decoded = decodePayload(payloadParam);
       if (!decoded?.slides || decoded.slides.length === 0) {
-        return { data: null, error: "В ссылке нет слайдов для показа." };
+        return { data: null, error: tr("В ссылке нет слайдов для показа.", "No slides to show in the link.") };
       }
       return { data: decoded as Payload, error: null };
     } catch {
-      return { data: null, error: "Не удалось открыть презентацию (повреждённые данные)." };
+      return { data: null, error: tr("Не удалось открыть презентацию (повреждённые данные).", "Failed to open presentation (corrupted data).") };
     }
-  }, [payloadParam]);
+  }, [payloadParam, tr]);
 
   useEffect(() => {
     if (!data) return;
@@ -58,10 +61,10 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
   if (error) {
     return (
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 px-4 py-10">
-        <div className="text-lg font-semibold text-gray-900">Показ презентации</div>
+        <div className="text-lg font-semibold text-gray-900">{tr("Показ презентации", "Presentation viewer")}</div>
         <div className="rounded-xl border bg-white p-4 text-red-600">{error}</div>
         <Link href="/teacher/tools/presentations" className="text-sm text-blue-600 hover:underline">
-          Вернуться к генератору
+          {tr("Вернуться к генератору", "Back to generator")}
         </Link>
       </main>
     );
@@ -70,7 +73,7 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
   if (!data) {
     return (
       <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 py-10 text-gray-500">
-        Загрузка презентации...
+        {tr("Загрузка презентации...", "Loading presentation...")}
       </main>
     );
   }
@@ -88,9 +91,9 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-4 md:px-8">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs uppercase tracking-wide text-gray-600">
-            Показ для студентов
+            {tr("Показ для студентов", "Student view")}
           </div>
-          <h1 className="text-xl font-semibold">{data.title || "Презентация"}</h1>
+          <h1 className="text-xl font-semibold">{data.title || tr("Презентация", "Presentation")}</h1>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">
@@ -101,13 +104,13 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
             onClick={requestFullscreen}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm hover:border-gray-500"
           >
-            Во весь экран
+            {tr("Во весь экран", "Fullscreen")}
           </button>
           <Link
             href="/teacher/tools/presentations"
             className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white"
           >
-            Выйти
+            {tr("Выйти", "Exit")}
           </Link>
         </div>
       </header>
@@ -147,7 +150,7 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
               </div>
             )}
             {!hasImage && !hasText && (
-              <div className="text-center text-gray-500">Слайд пустой</div>
+              <div className="text-center text-gray-500">{tr("Слайд пустой", "Slide is empty")}</div>
             )}
           </div>
         </div>
@@ -158,15 +161,17 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
             onClick={() => setIndex(prev => (prev - 1 + data.slides.length) % data.slides.length)}
             className="rounded-xl border border-gray-300 px-4 py-2 text-sm hover:border-gray-500"
           >
-            ← Назад
+            ← {tr("Назад", "Back")}
           </button>
-          <div className="text-xs text-gray-500">Пробел/→ — далее, ← — назад, Esc — выйти</div>
+          <div className="text-xs text-gray-500">
+            {tr("Пробел/→ — далее, ← — назад, Esc — выйти", "Space/→ next, ← back, Esc to exit")}
+          </div>
           <button
             type="button"
             onClick={() => setIndex(prev => (prev + 1) % data.slides.length)}
             className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white"
           >
-            Далее →
+            {tr("Далее", "Next")} →
           </button>
         </div>
       </section>

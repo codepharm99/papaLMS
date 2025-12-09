@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { useCurrentUser } from "@/components/user-context";
+import { useLanguage } from "@/components/language-context";
 
 export type CourseVM = {
   id: string;
@@ -23,8 +24,10 @@ export default function CourseCard({
 }) {
   const [isPending, start] = useTransition();
   const { user } = useCurrentUser();
+  const { language } = useLanguage();
   const isStudent = user?.role === "STUDENT";
   const restrictEnroll = !!user && !isStudent;
+  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
 
   const toggle = () => {
     if (restrictEnroll) return;
@@ -50,24 +53,35 @@ export default function CourseCard({
   };
 
   return (
-    <div className="flex flex-col rounded-2xl border bg-white p-4 shadow-sm">
-      <div className="mb-2 text-xs text-gray-500">{data.code} · {data.orgTag}</div>
-      <h3 className="mb-3 text-lg font-semibold">
-        <Link href={`/course/${data.id}`} className="hover:underline">{data.title}</Link>
+    <div className="relative flex flex-col overflow-hidden rounded-2xl border border-indigo-50 bg-gradient-to-br from-white via-indigo-50/40 to-white p-5 shadow-lg shadow-indigo-100/50 transition-transform hover:-translate-y-0.5">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.1),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(236,72,153,0.08),transparent_35%)]" />
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-wide">
+          {data.code}
+        </div>
+        <span className="text-[11px] text-gray-500 rounded-full border px-2 py-1 bg-white/80">{data.orgTag}</span>
+      </div>
+      <h3 className="relative mt-3 text-lg font-semibold text-gray-900">
+        <Link href={`/course/${data.id}`} className="hover:underline">
+          {data.title}
+        </Link>
       </h3>
-      <div className="mt-auto flex items-center justify-between">
-        <span className="text-sm text-gray-600">Зачислено: {data.enrolledCount}</span>
-        {restrictEnroll ? (
-          <span className="text-xs text-gray-500">Запись доступна только студентам</span>
-        ) : (
+      <div className="relative mt-3 flex items-center justify-between">
+        <div className="flex flex-col text-sm text-gray-600">
+          <span className="font-semibold text-gray-800">{tr("Зачислено", "Enrolled")} · {data.enrolledCount}</span>
+          {restrictEnroll && <span className="text-xs text-gray-500">{tr("Доступно только студентам", "Students only")}</span>}
+        </div>
+        {!restrictEnroll && (
           <button
             onClick={toggle}
             disabled={isPending}
-            className={`rounded-xl px-3 py-2 text-sm ${
-              data.isEnrolled ? "bg-white text-gray-900 border" : "bg-gray-900 text-white"
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow ${
+              data.isEnrolled
+                ? "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50"
+                : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200"
             } disabled:opacity-60`}
           >
-            {data.isEnrolled ? "Отписаться" : "Записаться"}
+            {isPending ? tr("...", "...") : data.isEnrolled ? tr("Отписаться", "Unenroll") : tr("Записаться", "Enroll")}
           </button>
         )}
       </div>
