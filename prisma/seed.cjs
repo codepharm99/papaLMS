@@ -85,7 +85,7 @@ async function main() {
       teacherId: teacher.id,
     }),
   ]);
-
+//  Create a map for easy access
 
   const courseMap = Object.fromEntries(courses.map(course => [course.id, course]));
 
