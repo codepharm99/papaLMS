@@ -44,6 +44,19 @@ export default function TeacherToolsPage() {
             Смотреть дашборд →
           </div>
         </Link>
+        <Link
+          href="/teacher/tools/marks"
+          className="group block rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+        >
+          <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Оценивание</div>
+          <div className="text-base font-medium">Выставление баллов</div>
+          <p className="mt-2 text-sm text-gray-600">
+            Выберите курс, студента и неделю, чтобы сохранить баллы за лекцию, практику, инд.работу, рейтинг, мидтерм или экзамен.
+          </p>
+          <div className="mt-3 inline-flex items-center text-sm text-blue-600 group-hover:underline">
+            Открыть →
+          </div>
+        </Link>
       </div>
     </div>
   );

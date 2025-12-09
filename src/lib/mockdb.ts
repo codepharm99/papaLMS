@@ -766,6 +766,122 @@ export async function listTeachersForAdmin(): Promise<
   }));
 }
 
+export type WeeklyScoreRow = {
+  courseId: string;
+  courseCode: string;
+  courseTitle: string;
+  week: number;
+  part: number;
+  lectureScore: number;
+  practiceScore: number;
+  individualWorkScore: number;
+  ratingScore?: number | null;
+  midtermScore?: number | null;
+  examScore?: number | null;
+};
+
+export async function listWeeklyScoresForStudent(studentId: string): Promise<WeeklyScoreRow[]> {
+  const rows = await prisma.weeklyScore.findMany({
+    where: { studentId },
+    orderBy: [{ courseId: "asc" }, { week: "asc" }],
+    include: { course: true },
+  });
+
+  return rows.map(r => ({
+    courseId: r.courseId,
+    courseCode: r.course.code,
+    courseTitle: r.course.title,
+    week: r.week,
+    part: r.part,
+    lectureScore: r.lectureScore,
+    practiceScore: r.practiceScore,
+    individualWorkScore: r.individualWorkScore,
+    ratingScore: r.ratingScore,
+    midtermScore: r.midtermScore,
+    examScore: r.examScore,
+  }));
+}
+
+export async function listCourseStudentsForTeacher(
+  teacherId: string,
+  courseId: string
+): Promise<Array<{ id: string; name: string; username: string }>> {
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course || course.teacherId !== teacherId) return [];
+  const enrollments = await prisma.enrollment.findMany({
+    where: { courseId },
+    include: { user: true },
+    orderBy: { user: { name: "asc" } },
+  });
+  return enrollments
+    .filter(e => e.user.role === "STUDENT")
+    .map(e => ({ id: e.user.id, name: e.user.name, username: e.user.username }));
+}
+
+export async function setWeeklyScoreForTeacher(
+  teacherId: string,
+  payload: {
+    courseId: string;
+    studentId: string;
+    week: number;
+    part?: number | null;
+    lectureScore?: number | null;
+    practiceScore?: number | null;
+    individualWorkScore?: number | null;
+    ratingScore?: number | null;
+    midtermScore?: number | null;
+    examScore?: number | null;
+  }
+): Promise<{ ok: true } | { error: "FORBIDDEN" | "COURSE_NOT_FOUND" | "STUDENT_NOT_FOUND" | "NOT_ENROLLED" | "INVALID_WEEK" }> {
+  if (teacherId === "") return { error: "FORBIDDEN" };
+  const { courseId, studentId, week } = payload;
+  if (!Number.isInteger(week) || week < 1 || week > 14) return { error: "INVALID_WEEK" };
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return { error: "COURSE_NOT_FOUND" };
+  if (course.teacherId !== teacherId) return { error: "FORBIDDEN" };
+
+  const student = await prisma.user.findUnique({ where: { id: studentId } });
+  if (!student || student.role !== "STUDENT") return { error: "STUDENT_NOT_FOUND" };
+
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId: studentId, courseId } },
+  });
+  if (!enrollment) return { error: "NOT_ENROLLED" };
+
+  const clampScore = (value: number | null | undefined) => {
+    if (typeof value !== "number" || Number.isNaN(value)) return null;
+    return Math.max(0, Math.min(100, Math.round(value)));
+  };
+
+  await prisma.weeklyScore.upsert({
+    where: { courseId_studentId_week: { courseId, studentId, week } },
+    update: {
+      part: payload.part ?? (week <= 7 ? 1 : 2),
+      lectureScore: clampScore(payload.lectureScore) ?? 0,
+      practiceScore: clampScore(payload.practiceScore) ?? 0,
+      individualWorkScore: clampScore(payload.individualWorkScore) ?? 0,
+      ratingScore: clampScore(payload.ratingScore),
+      midtermScore: clampScore(payload.midtermScore),
+      examScore: clampScore(payload.examScore),
+    },
+    create: {
+      courseId,
+      studentId,
+      week,
+      part: payload.part ?? (week <= 7 ? 1 : 2),
+      lectureScore: clampScore(payload.lectureScore) ?? 0,
+      practiceScore: clampScore(payload.practiceScore) ?? 0,
+      individualWorkScore: clampScore(payload.individualWorkScore) ?? 0,
+      ratingScore: clampScore(payload.ratingScore),
+      midtermScore: clampScore(payload.midtermScore),
+      examScore: clampScore(payload.examScore),
+    },
+  });
+
+  return { ok: true };
+}
+
 export async function assignTestToStudent(
   teacher: User,
   data: { testId: string; studentId: string; dueAt?: string | null }
