@@ -96,6 +96,45 @@ export type GuestAttempt = {
   createdAt: number;
 };
 
+export type TeacherAnalytics = {
+  summary: {
+    testsTotal: number;
+    publishedTests: number;
+    questionsTotal: number;
+    avgQuestionsPerTest: number;
+    assignmentsTotal: number;
+    completedAssignments: number;
+    completionRate: number;
+    uniqueStudents: number;
+    upcomingDue: number;
+    guestAttemptsTotal: number;
+    avgGuestScore: number;
+  };
+  status: {
+    assigned: number;
+    inProgress: number;
+    completed: number;
+  };
+  recentTests: Array<{
+    id: string;
+    title: string;
+    createdAt: number;
+    publishedAt?: number | null;
+    questions: number;
+    assignments: number;
+    completedAssignments: number;
+    completionRate: number;
+    guestAttempts: number;
+    avgGuestScore: number;
+  }>;
+  topStudents: Array<{
+    id: string;
+    name: string;
+    totalAssignments: number;
+    completedAssignments: number;
+  }>;
+};
+
 const PASSWORD_SALT_ROUNDS = 10;
 
 const sanitizeUser = (user: { id: string; username: string; name: string; role: Role } | null): User | null =>
@@ -769,6 +808,127 @@ export async function listGuestAttemptsForTest(
       total: a.total,
       createdAt: a.createdAt.getTime(),
     })),
+  };
+}
+
+export async function getTeacherAnalytics(teacherId: string): Promise<TeacherAnalytics> {
+  const now = Date.now();
+
+  const [testsTotal, publishedTests, questionsTotal, assignments, guestAttempts, recentTests] = await Promise.all([
+    prisma.test.count({ where: { teacherId } }),
+    prisma.test.count({ where: { teacherId, publishedAt: { not: null } } }),
+    prisma.question.count({ where: { test: { teacherId } } }),
+    prisma.testAssignment.findMany({
+      where: { test: { teacherId } },
+      include: { student: { select: { id: true, name: true } } },
+    }),
+    prisma.guestTestAttempt.findMany({
+      where: { test: { teacherId } },
+      select: { score: true, total: true, testId: true },
+    }),
+    prisma.test.findMany({
+      where: { teacherId },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: {
+        _count: { select: { questions: true, assignments: true, guestAttempts: true } },
+        assignments: { select: { status: true } },
+        guestAttempts: { select: { score: true, total: true } },
+      },
+    }),
+  ]);
+
+  const status = { assigned: 0, inProgress: 0, completed: 0 };
+  for (const a of assignments) {
+    switch (a.status) {
+      case "IN_PROGRESS":
+        status.inProgress += 1;
+        break;
+      case "COMPLETED":
+        status.completed += 1;
+        break;
+      default:
+        status.assigned += 1;
+    }
+  }
+
+  const assignmentsTotal = assignments.length;
+  const completedAssignments = assignments.filter(a => a.status === "COMPLETED").length;
+  const completionRate = assignmentsTotal > 0 ? completedAssignments / assignmentsTotal : 0;
+  const uniqueStudents = new Set(assignments.map(a => a.studentId)).size;
+  const upcomingDue = assignments.filter(a => a.dueAt && a.dueAt.getTime() > now && a.status !== "COMPLETED").length;
+
+  let guestScoreSum = 0;
+  let guestScoreTotal = 0;
+  guestAttempts.forEach(a => {
+    guestScoreSum += a.score;
+    guestScoreTotal += a.total;
+  });
+  const avgGuestScore = guestScoreTotal > 0 ? guestScoreSum / guestScoreTotal : 0;
+
+  const recentTestsView = recentTests.map(t => {
+    const completed = t.assignments.filter(a => a.status === "COMPLETED").length;
+    let localScore = 0;
+    let localTotal = 0;
+    t.guestAttempts.forEach(g => {
+      localScore += g.score;
+      localTotal += g.total;
+    });
+    return {
+      id: t.id,
+      title: t.title,
+      createdAt: t.createdAt.getTime(),
+      publishedAt: t.publishedAt?.getTime() ?? null,
+      questions: t._count.questions ?? 0,
+      assignments: t._count.assignments ?? 0,
+      completedAssignments: completed,
+      completionRate: t._count.assignments ? completed / t._count.assignments : 0,
+      guestAttempts: t._count.guestAttempts ?? 0,
+      avgGuestScore: localTotal > 0 ? localScore / localTotal : 0,
+    };
+  });
+
+  const topStudentsMap = new Map<
+    string,
+    { id: string; name: string; totalAssignments: number; completedAssignments: number }
+  >();
+  for (const a of assignments) {
+    const existing =
+      topStudentsMap.get(a.studentId) ??
+      {
+        id: a.studentId,
+        name: a.student?.name ?? "Студент",
+        totalAssignments: 0,
+        completedAssignments: 0,
+      };
+    existing.totalAssignments += 1;
+    if (a.status === "COMPLETED") existing.completedAssignments += 1;
+    topStudentsMap.set(a.studentId, existing);
+  }
+  const topStudents = Array.from(topStudentsMap.values())
+    .sort((a, b) => {
+      if (b.completedAssignments !== a.completedAssignments) return b.completedAssignments - a.completedAssignments;
+      return b.totalAssignments - a.totalAssignments;
+    })
+    .slice(0, 5);
+
+  return {
+    summary: {
+      testsTotal,
+      publishedTests,
+      questionsTotal,
+      avgQuestionsPerTest: testsTotal > 0 ? questionsTotal / testsTotal : 0,
+      assignmentsTotal,
+      completedAssignments,
+      completionRate,
+      uniqueStudents,
+      upcomingDue,
+      guestAttemptsTotal: guestAttempts.length,
+      avgGuestScore,
+    },
+    status,
+    recentTests: recentTestsView,
+    topStudents,
   };
 }
 

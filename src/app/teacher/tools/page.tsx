@@ -31,6 +31,19 @@ export default function TeacherToolsPage() {
             Открыть →
           </div>
         </Link>
+        <Link
+          href="/teacher/tools/analytics"
+          className="group block rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+        >
+          <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Аналитика</div>
+          <div className="text-base font-medium">Тесты и студенты</div>
+          <p className="mt-2 text-sm text-gray-600">
+            Сводка по созданным тестам, назначениям студентам и активности по публичным ссылкам.
+          </p>
+          <div className="mt-3 inline-flex items-center text-sm text-blue-600 group-hover:underline">
+            Смотреть дашборд →
+          </div>
+        </Link>
       </div>
     </div>
   );
