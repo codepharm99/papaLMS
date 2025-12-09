@@ -184,6 +184,7 @@ export async function PATCH(req: Request) {
       if (typeof payload.fullName === "string") updates.fullName = payload.fullName;
       if (typeof payload.bio === "string") updates.bio = payload.bio;
       if (typeof payload.avatarUrl === "string") updates.avatarUrl = payload.avatarUrl;
+      if (payload.avatarUrl === null) updates.avatarUrl = null;
       if (payload.settings !== undefined) {
         const links = payload.settings?.links ?? (existing?.settings as any)?.links ?? {};
         const certificates = Array.isArray(payload.settings?.certificates)
@@ -196,7 +197,9 @@ export async function PATCH(req: Request) {
     }
 
     // before upsert: try to remove previous avatar file/object if replaced
-    if (existing && existing.avatarUrl && updates.avatarUrl && existing.avatarUrl !== updates.avatarUrl) {
+    const shouldRemoveExistingAvatar =
+      existing && existing.avatarUrl && ((updates.avatarUrl && existing.avatarUrl !== updates.avatarUrl) || updates.avatarUrl === null);
+    if (shouldRemoveExistingAvatar) {
       try {
         const bucket = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || process.env.AWS_BUCKET;
         const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
