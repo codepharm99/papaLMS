@@ -221,17 +221,17 @@ export default function TeacherAnalyticsPage() {
                         </div>
                       </div>
                       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-lg bg-gray-50 p-3">
+                        <div className="rounded-lg bg-white/5 p-3">
                           <div className="text-xs uppercase tracking-wide text-gray-500">Вопросов</div>
                           <div className="text-base font-semibold">{numberFmt.format(test.questions)}</div>
                         </div>
-                        <div className="rounded-lg bg-gray-50 p-3">
+                        <div className="rounded-lg bg-white/5 p-3">
                           <div className="text-xs uppercase tracking-wide text-gray-500">Назначений</div>
                           <div className="text-base font-semibold">
                             {numberFmt.format(test.completedAssignments)} / {numberFmt.format(test.assignments)}
                           </div>
                         </div>
-                        <div className="rounded-lg bg-gray-50 p-3">
+                        <div className="rounded-lg bg-white/5 p-3">
                           <div className="text-xs uppercase tracking-wide text-gray-500">Гостевые попытки</div>
                           <div className="text-base font-semibold">
                             {numberFmt.format(test.guestAttempts)} · {formatPercent(test.avgGuestScore)}
@@ -280,4 +280,3 @@ export default function TeacherAnalyticsPage() {
     </div>
   );
 }
-
