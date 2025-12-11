@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/components/user-context";
@@ -30,6 +31,14 @@ export default function LoginPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+  const heroPaint: CSSProperties = {
+    "--module-accent-1": "223 92% 66%",
+    "--module-accent-2": "260 82% 66%",
+    "--module-accent-3": "308 76% 64%",
+    "--aurora-accent-1": "223 92% 66%",
+    "--aurora-accent-2": "260 82% 66%",
+    "--aurora-accent-3": "308 76% 64%",
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -90,10 +99,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative z-10 mx-auto max-w-5xl py-10 px-4 sm:px-6 lg:px-8">
+    <div
+      className="page-aurora relative z-10 mx-auto max-w-5xl rounded-3xl py-10 px-4 sm:px-6 lg:px-8"
+      style={heroPaint}
+    >
       <FinisherLights />
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-indigo-100/60 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 p-8 text-white shadow-xl shadow-indigo-300/40">
+        <div
+          className="module-illustration rounded-3xl border border-indigo-100/60 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 p-8 text-white shadow-xl shadow-indigo-300/40"
+          style={heroPaint}
+        >
           <div className="text-xs uppercase tracking-[0.3em] text-white/70">{tr("papaLMS", "papaLMS")}</div>
           <h1 className="mt-3 text-3xl font-bold leading-tight">{tr("Вход и регистрация", "Sign in / Sign up")}</h1>
           <p className="mt-2 text-sm text-white/85">{tr("Управляйте курсами, тестами и профилем в одном месте.", "Manage courses, tests, and your profile in one place.")}</p>
