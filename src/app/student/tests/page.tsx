@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-context";
@@ -12,6 +13,21 @@ export default function StudentTestsPage() {
   const [error, setError] = useState<string | null>(null);
   const { language } = useLanguage();
   const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
+  const heroPaint: CSSProperties = {
+    "--module-accent-1": "217 92% 68%",
+    "--module-accent-2": "203 88% 64%",
+    "--module-accent-3": "182 76% 64%",
+  };
+  const listPaint: CSSProperties = {
+    "--module-accent-1": "229 82% 78%",
+    "--module-accent-2": "258 78% 74%",
+    "--module-accent-3": "292 76% 70%",
+  };
+  const pagePaint: CSSProperties = {
+    "--aurora-accent-1": "223 92% 66%",
+    "--aurora-accent-2": "260 82% 66%",
+    "--aurora-accent-3": "308 76% 64%",
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -36,8 +52,11 @@ export default function StudentTestsPage() {
   }, []);
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 px-6 py-5 text-white shadow-lg">
+    <div className="page-aurora space-y-5 rounded-3xl p-1" style={pagePaint}>
+      <div
+        className="module-illustration rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 px-6 py-5 text-white shadow-lg"
+        style={heroPaint}
+      >
         <p className="text-xs uppercase tracking-[0.3em] text-white/70">{tr("Тестирование", "Testing")}</p>
         <h1 className="mt-2 text-2xl font-bold">{tr("Мои тесты", "My tests")}</h1>
         <p className="text-sm text-white/80">
@@ -53,7 +72,10 @@ export default function StudentTestsPage() {
           {tr("Назначенных тестов пока нет", "No assigned tests yet")}
         </div>
       ) : (
-        <ul className="divide-y rounded-2xl border bg-white shadow-sm">
+        <ul
+          className="module-illustration light divide-y rounded-2xl border bg-white/95 shadow-sm"
+          style={listPaint}
+        >
           {items.map(a => (
             <li key={a.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>

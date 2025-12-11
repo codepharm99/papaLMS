@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/components/user-context";
@@ -27,6 +28,21 @@ export default function TeacherCoursesPage() {
   const [orgTag, setOrgTag] = useState("IUA");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const heroPaint: CSSProperties = {
+    "--module-accent-1": "161 77% 62%",
+    "--module-accent-2": "186 76% 60%",
+    "--module-accent-3": "199 74% 64%",
+  };
+  const cardPaints: CSSProperties[] = [
+    { "--module-accent-1": "168 74% 74%", "--module-accent-2": "186 76% 70%", "--module-accent-3": "201 74% 68%" },
+    { "--module-accent-1": "204 84% 74%", "--module-accent-2": "225 82% 70%", "--module-accent-3": "245 74% 66%" },
+    { "--module-accent-1": "256 78% 76%", "--module-accent-2": "279 74% 72%", "--module-accent-3": "301 70% 70%" },
+  ];
+  const pagePaint: CSSProperties = {
+    "--aurora-accent-1": "223 92% 66%",
+    "--aurora-accent-2": "260 82% 66%",
+    "--aurora-accent-3": "308 76% 64%",
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,8 +102,11 @@ export default function TeacherCoursesPage() {
   }
 
   return (
-    <section className="space-y-5">
-      <div className="rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 px-6 py-5 text-white shadow-lg">
+    <section className="page-aurora space-y-5 rounded-3xl p-1" style={pagePaint}>
+      <div
+        className="module-illustration rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 px-6 py-5 text-white shadow-lg"
+        style={heroPaint}
+      >
         <p className="text-xs uppercase tracking-[0.25em] text-white/70">{tr("Панель преподавателя", "Teacher panel")}</p>
         <h1 className="mt-2 text-2xl font-bold">{tr("Мои курсы", "My courses")}</h1>
         <p className="text-sm text-white/80">
@@ -152,8 +171,12 @@ export default function TeacherCoursesPage() {
 
       {items && items.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {items.map(course => (
-            <div key={course.id} className="rounded-2xl border bg-white p-4 shadow-sm">
+          {items.map((course, idx) => (
+            <div
+              key={course.id}
+              className="module-illustration light rounded-2xl border bg-white/95 p-4 shadow-sm"
+              style={cardPaints[idx % cardPaints.length]}
+            >
               <div className="text-xs text-gray-500">{course.code} · {course.orgTag}</div>
               <h3 className="mt-1 text-lg font-semibold">{course.title}</h3>
               {course.description && <p className="mt-2 text-sm text-gray-600">{course.description}</p>}

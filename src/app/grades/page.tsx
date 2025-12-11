@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { ScoreEntry } from "@/lib/generateScores";
 
@@ -42,6 +43,11 @@ export default function GradesPage() {
     const passed = items.filter((i) => i.grade >= 70).length;
     return Math.round((passed / items.length) * 100);
   }, [items]);
+  const tablePaint: CSSProperties = {
+    "--module-accent-1": "213 86% 78%",
+    "--module-accent-2": "190 80% 74%",
+    "--module-accent-3": "171 74% 70%",
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -62,7 +68,10 @@ export default function GradesPage() {
           <StatCard title="Обновлено" value="Из мок-API /api/grades" />
         </div>
 
-        <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div
+          className="module-illustration light overflow-hidden rounded-2xl border bg-white/95 shadow-sm"
+          style={tablePaint}
+        >
           <div className="border-b px-4 py-3">
             <h2 className="text-base font-semibold text-gray-800">Последние оценки</h2>
           </div>
@@ -124,8 +133,22 @@ export default function GradesPage() {
 }
 
 function StatCard({ title, value }: { title: string; value: string }) {
+  const accentMap: Record<string, [string, string, string]> = {
+    "Средний балл": ["229 86% 78%", "258 78% 78%", "286 75% 74%"],
+    "Успешных работ": ["163 74% 74%", "192 78% 72%", "151 72% 66%"],
+    "Обновлено": ["34 92% 72%", "15 88% 68%", "47 80% 66%"],
+  };
+  const [a1, a2, a3] = accentMap[title] ?? ["220 16% 76%", "240 16% 74%", "200 16% 72%"];
+  const paint: CSSProperties = {
+    "--module-accent-1": a1,
+    "--module-accent-2": a2,
+    "--module-accent-3": a3,
+  };
   return (
-    <div className="rounded-xl border bg-white px-4 py-3 shadow-sm">
+    <div
+      className="module-illustration light rounded-xl border bg-white/95 px-4 py-3 shadow-sm"
+      style={paint}
+    >
       <div className="text-sm text-gray-500">{title}</div>
       <div className="text-xl font-semibold text-gray-900">{value}</div>
     </div>

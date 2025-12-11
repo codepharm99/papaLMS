@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useCurrentUser } from "@/components/user-context";
@@ -27,6 +28,11 @@ export default function PresentationsTool() {
   const { user } = useCurrentUser();
   const { language } = useLanguage();
   const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
+  const heroPaint: CSSProperties = {
+    "--module-accent-1": "242 87% 68%",
+    "--module-accent-2": "276 80% 66%",
+    "--module-accent-3": "320 78% 64%",
+  };
 
   const [presentationTitle, setPresentationTitle] = useState(tr("Новая презентация", "New presentation"));
   const [slides, setSlides] = useState<SlideDraft[]>([{ id: makeId(), text: "" }]);
@@ -174,14 +180,24 @@ export default function PresentationsTool() {
   }
 
   return (
-    <div className="space-y-5">
+    <div
+      className="page-aurora space-y-5 rounded-3xl p-1"
+      style={{
+        "--aurora-accent-1": "223 92% 66%",
+        "--aurora-accent-2": "260 82% 66%",
+        "--aurora-accent-3": "308 76% 64%",
+      } as CSSProperties}
+    >
       <Breadcrumbs
         items={[
           { label: tr("Инструменты", "Tools"), href: "/teacher/tools" },
           { label: tr("Презентации", "Presentations") },
         ]}
       />
-      <div className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-600 p-6 text-white shadow-xl shadow-indigo-200/50">
+      <div
+        className="module-illustration overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-600 p-6 text-white shadow-xl shadow-indigo-200/50"
+        style={heroPaint}
+      >
         <div className="text-xs uppercase tracking-[0.3em] text-white/70">{tr("Инструменты преподавателя", "Teacher tools")}</div>
         <h1 className="mt-2 text-2xl font-bold">{tr("Генератор презентаций", "Presentation generator")}</h1>
         <p className="text-sm text-white/85">

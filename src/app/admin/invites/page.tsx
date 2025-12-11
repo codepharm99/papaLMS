@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/components/language-context";
@@ -21,6 +22,21 @@ export default function AdminInvitesPage() {
   const router = useRouter();
   const { language } = useLanguage();
   const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
+  const heroPaint: CSSProperties = {
+    "--module-accent-1": "221 70% 62%",
+    "--module-accent-2": "258 71% 62%",
+    "--module-accent-3": "195 68% 60%",
+  };
+  const pagePaint: CSSProperties = {
+    "--aurora-accent-1": "223 92% 66%",
+    "--aurora-accent-2": "260 82% 66%",
+    "--aurora-accent-3": "308 76% 64%",
+  };
+  const tablePaint: CSSProperties = {
+    "--module-accent-1": "223 82% 76%",
+    "--module-accent-2": "205 80% 72%",
+    "--module-accent-3": "184 74% 70%",
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,8 +77,11 @@ export default function AdminInvitesPage() {
   };
 
   return (
-    <section className="space-y-5">
-      <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-800 to-indigo-600 px-6 py-5 text-white shadow-xl">
+    <section className="page-aurora space-y-5 rounded-3xl p-1" style={pagePaint}>
+      <div
+        className="module-illustration rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-800 to-indigo-600 px-6 py-5 text-white shadow-xl"
+        style={heroPaint}
+      >
         <p className="text-xs uppercase tracking-[0.3em] text-white/70">{tr("Администрирование", "Administration")}</p>
         <h1 className="mt-2 text-2xl font-bold">{tr("Коды для преподавателей", "Teacher invite codes")}</h1>
         <p className="text-sm text-white/80">{tr("Сгенерируйте код и передайте преподавателю для регистрации.", "Generate a code and share it with a teacher to register.")}</p>
@@ -85,7 +104,10 @@ export default function AdminInvitesPage() {
       )}
 
       {invites && invites.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div
+          className="module-illustration light overflow-hidden rounded-2xl border bg-white/95 shadow-sm"
+          style={tablePaint}
+        >
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
               <tr>
