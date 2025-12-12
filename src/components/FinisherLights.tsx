@@ -24,10 +24,16 @@ export default function FinisherLights() {
 
     // Sizing with device pixel ratio for crispness
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const parent = canvas.parentElement;
+    const measure = () => {
+      const rect = parent?.getBoundingClientRect();
+      if (rect && rect.width > 0 && rect.height > 0) return { w: rect.width, h: rect.height };
+      return { w: window.innerWidth, h: window.innerHeight };
+    };
     const fit = () => {
-      const { innerWidth: w, innerHeight: h } = window;
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
+      const { w, h } = measure();
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
       canvas.style.width = w + "px";
       canvas.style.height = h + "px";
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -40,11 +46,12 @@ export default function FinisherLights() {
     const lights: Light[] = [];
     const colors = ["#c0d5e7", "#ffffff"]; // matches globals.css c1/c2
 
+    const { w: startW, h: startH } = measure();
     for (let i = 0; i < COUNT; i++) {
       const r = 120 + Math.random() * 220; // radius in px (CSS pixels)
       lights.push({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
+        x: Math.random() * startW,
+        y: Math.random() * startH,
         r,
         vx: (Math.random() * 0.6 + 0.2) * (Math.random() < 0.5 ? -1 : 1),
         vy: (Math.random() * 0.6 + 0.2) * (Math.random() < 0.5 ? -1 : 1),
@@ -59,8 +66,8 @@ export default function FinisherLights() {
       const dt = Math.min(33, t - last);
       last = t;
 
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
       ctx.clearRect(0, 0, w, h);
 
       for (const p of lights) {
@@ -89,8 +96,8 @@ export default function FinisherLights() {
       rafRef.current = requestAnimationFrame(tick);
     } else {
       // Draw one static frame for reduced motion
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
       ctx.clearRect(0, 0, w, h);
       for (const p of lights) {
         const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
@@ -104,15 +111,21 @@ export default function FinisherLights() {
     }
 
     window.addEventListener("resize", fit);
+    const ro = new ResizeObserver(fit);
+    if (parent) ro.observe(parent);
     return () => {
       html.classList.remove("finisher-active");
+      ro.disconnect();
       window.removeEventListener("resize", fit);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10">
+    <div
+      className="pointer-events-none"
+      style={{ position: "absolute", inset: 0, zIndex: 0 }}
+    >
       <canvas ref={canvasRef} />
     </div>
   );

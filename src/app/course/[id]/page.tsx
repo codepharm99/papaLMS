@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import CourseHeader from "@/components/CourseHeader";
@@ -35,8 +36,19 @@ export default function CoursePage() {
 
   if (!course) return <div className="text-gray-500">Загрузка...</div>;
 
+  const overviewPaint: CSSProperties = {
+    "--module-accent-1": "258 76% 76%",
+    "--module-accent-2": "235 74% 72%",
+    "--module-accent-3": "212 72% 70%",
+  };
+  const pagePaint: CSSProperties = {
+    "--aurora-accent-1": "223 92% 66%",
+    "--aurora-accent-2": "260 82% 66%",
+    "--aurora-accent-3": "308 76% 64%",
+  };
+
   return (
-    <section className="space-y-4">
+    <section className="page-aurora space-y-4 rounded-3xl p-1" style={pagePaint}>
       <CourseHeader course={course} onChanged={setCourse} />
 
       <div className="flex gap-2">
@@ -55,7 +67,10 @@ export default function CoursePage() {
       </div>
 
       {tab === "overview" && (
-        <div className="rounded-2xl border bg-white p-4 text-gray-600">
+        <div
+          className="module-illustration light rounded-2xl border bg-white/95 p-4 text-gray-600 shadow-sm"
+          style={overviewPaint}
+        >
           Здесь будет краткое описание курса и блок объявлений (добавим позже).
         </div>
       )}

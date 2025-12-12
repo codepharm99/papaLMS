@@ -28,6 +28,8 @@ model User {
   tests           Test[]           @relation("TeacherTests")
   studentAssignments TestAssignment[] @relation("StudentAssignments")
   givenAssignments   TestAssignment[] @relation("GivenAssignments")
+  email    String? @unique
+  profile Profile?
   presentations   Presentation[]   @relation("TeacherPresentations")
   weeklyScores    WeeklyScore[]
 }
@@ -158,6 +160,18 @@ model GuestTestAttempt {
   createdAt DateTime @default(now())
 }
 
+model Profile {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  fullName  String?  // Полное имя / display name
+  bio       String?  // О себе
+  avatarUrl String?  // URL аватара
+  settings  Json?    // JSON-настройки (тема, уведомления и т.д.)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  email    String  @unique
+}
 model Presentation {
   id        String   @id @default(cuid())
   teacherId String

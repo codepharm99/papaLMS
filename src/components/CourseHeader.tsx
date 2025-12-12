@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useTransition } from "react";
 import { useCurrentUser } from "@/components/user-context";
 
@@ -25,6 +26,11 @@ export default function CourseHeader({
   const { user } = useCurrentUser();
   const isStudent = user?.role === "STUDENT";
   const restrictEnroll = !!user && !isStudent;
+  const paint: CSSProperties = {
+    "--module-accent-1": "227 86% 76%",
+    "--module-accent-2": "210 86% 74%",
+    "--module-accent-3": "189 74% 72%",
+  };
 
   const toggle = () => {
     if (restrictEnroll) return;
@@ -47,7 +53,7 @@ export default function CourseHeader({
   };
 
   return (
-    <div className="rounded-2xl border bg-white p-4">
+    <div className="module-illustration light rounded-2xl border bg-white/95 p-4 shadow-sm" style={paint}>
       <div className="text-xs text-gray-500">{course.code} · {course.orgTag}</div>
       <h1 className="mt-1 text-2xl font-semibold">{course.title}</h1>
       <div className="mt-1 text-sm text-gray-600">Преподаватель: {course.teacherName}</div>

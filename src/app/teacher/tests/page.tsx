@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Breadcrumbs from "@/components/Breadcrumbs";
@@ -15,6 +16,21 @@ export default function TeacherTestsPage() {
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const createPaint: CSSProperties = {
+    "--module-accent-1": "215 82% 76%",
+    "--module-accent-2": "190 82% 70%",
+    "--module-accent-3": "161 74% 68%",
+  };
+  const listPaint: CSSProperties = {
+    "--module-accent-1": "258 78% 76%",
+    "--module-accent-2": "234 74% 74%",
+    "--module-accent-3": "213 70% 70%",
+  };
+  const pagePaint: CSSProperties = {
+    "--aurora-accent-1": "223 92% 66%",
+    "--aurora-accent-2": "260 82% 66%",
+    "--aurora-accent-3": "308 76% 64%",
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +76,7 @@ export default function TeacherTestsPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="page-aurora space-y-4 rounded-3xl p-1" style={pagePaint}>
       <Breadcrumbs
         items={[
           { label: "Инструменты", href: "/teacher/tools" },
@@ -69,7 +85,10 @@ export default function TeacherTestsPage() {
         ]}
       />
 
-      <section className="rounded-xl border bg-white p-4">
+      <section
+        className="module-illustration light rounded-xl border bg-white/95 p-4 shadow-sm"
+        style={createPaint}
+      >
         <h1 className="mb-3 text-lg font-medium">Создать тест</h1>
         <form onSubmit={handleCreate} className="grid gap-3 md:max-w-xl">
           <label className="grid gap-1">
@@ -86,7 +105,10 @@ export default function TeacherTestsPage() {
         </form>
       </section>
 
-      <section className="rounded-xl border bg-white p-4">
+      <section
+        className="module-illustration light rounded-xl border bg-white/95 p-4 shadow-sm"
+        style={listPaint}
+      >
         <h2 className="mb-3 text-lg font-medium">Прошлые тесты</h2>
         {loading ? (
           <div className="text-sm text-gray-600">Загрузка…</div>
