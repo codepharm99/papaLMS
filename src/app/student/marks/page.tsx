@@ -94,7 +94,10 @@ export default function StudentMarksPage() {
             </div>
             <div className="space-y-2">
               {course.rows.map(r => (
-                <div key={`${course.courseId}-w${r.week}`} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3">
+                <div
+                  key={`${course.courseId}-w${r.week}`}
+                  className="rounded-xl border border-gray-200 bg-gray-900/30 px-3 py-3"
+                >
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <div className="font-semibold text-gray-900">Неделя {r.week}</div>
                     <div className="text-xs text-gray-500">Часть {r.part}</div>
