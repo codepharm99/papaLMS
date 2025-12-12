@@ -30,6 +30,8 @@ model User {
   givenAssignments   TestAssignment[] @relation("GivenAssignments")
   email    String? @unique
   profile Profile?
+  presentations   Presentation[]   @relation("TeacherPresentations")
+  weeklyScores    WeeklyScore[]
 }
 
 model Course {
@@ -42,6 +44,7 @@ model Course {
   teacher     User          @relation("TeacherCourses", fields: [teacherId], references: [id])
   enrollments Enrollment[]
   materials   Material[]
+  weeklyScores WeeklyScore[]
   createdAt   DateTime      @default(now())
 
   @@unique([code])
@@ -56,6 +59,27 @@ model Enrollment {
   createdAt DateTime @default(now())
 
   @@unique([userId, courseId])
+}
+
+model WeeklyScore {
+  id                   String   @id @default(cuid())
+  studentId            String
+  courseId             String
+  week                 Int
+  part                 Int
+  lectureScore         Int
+  practiceScore        Int
+  individualWorkScore  Int
+  ratingScore          Int?
+  midtermScore         Int?
+  examScore            Int?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  student              User     @relation(fields: [studentId], references: [id])
+  course               Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([courseId, studentId, week])
+  @@index([studentId, courseId])
 }
 
 model Material {
@@ -147,4 +171,15 @@ model Profile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   email    String  @unique
+}
+model Presentation {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation("TeacherPresentations", fields: [teacherId], references: [id])
+  title     String
+  slides    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId, createdAt])
 }

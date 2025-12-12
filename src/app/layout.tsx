@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuroraBackground from "@/components/AuroraBackground";
 import Nav from "@/components/Nav";
 import { UserProvider } from "@/components/user-context";
 import { currentUser } from "@/lib/auth";
@@ -44,6 +45,15 @@ export default async function RootLayout({
             <main className="mx-auto max-w-6xl p-4 md:p-6">{children}</main>
           </UserProvider>
         </LanguageProvider>
+    <html lang="ru">
+      <body className="min-h-screen relative bg-gradient-to-b from-[#020617] via-[#090b26] to-[#1c0a37]">
+        <AuroraBackground />
+        <UserProvider initialUser={initialUser}>
+          <div className="relative z-10 flex min-h-screen flex-col">
+            <Nav />
+            <main className="mx-auto max-w-6xl p-4 md:p-6">{children}</main>
+          </div>
+        </UserProvider>
       </body>
     </html>
   );

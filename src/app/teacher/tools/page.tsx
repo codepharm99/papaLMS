@@ -64,6 +64,36 @@ export default function TeacherToolsPage() {
           <div className="text-base font-semibold text-gray-900">{tr("Создание и прошедшие тесты", "Create and past tests")}</div>
           <div className="mt-3 inline-flex items-center text-sm text-indigo-600 group-hover:underline">
             {tr("Открыть", "Open")} →
+          <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Тестирование</div>
+          <div className="text-base font-medium">Создание тестов и прошлые тесты</div>
+          <div className="mt-3 inline-flex items-center text-sm text-blue-600 group-hover:underline">
+            Открыть →
+          </div>
+        </Link>
+        <Link
+          href="/teacher/tools/analytics"
+          className="group block rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+        >
+          <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Аналитика</div>
+          <div className="text-base font-medium">Тесты и студенты</div>
+          <p className="mt-2 text-sm text-gray-600">
+            Сводка по созданным тестам, назначениям студентам и активности по публичным ссылкам.
+          </p>
+          <div className="mt-3 inline-flex items-center text-sm text-blue-600 group-hover:underline">
+            Смотреть дашборд →
+          </div>
+        </Link>
+        <Link
+          href="/teacher/tools/marks"
+          className="group block rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+        >
+          <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Оценивание</div>
+          <div className="text-base font-medium">Выставление баллов</div>
+          <p className="mt-2 text-sm text-gray-600">
+            Выберите курс, студента и неделю, чтобы сохранить баллы за лекцию, практику, инд.работу, рейтинг, мидтерм или экзамен.
+          </p>
+          <div className="mt-3 inline-flex items-center text-sm text-blue-600 group-hover:underline">
+            Открыть →
           </div>
         </Link>
       </div>

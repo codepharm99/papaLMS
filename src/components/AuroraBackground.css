@@ -1,0 +1,19 @@
+.aurora-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.aurora-sheen {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(108, 98, 255, 0.55), transparent 55%),
+    radial-gradient(circle at 80% 30%, rgba(58, 141, 255, 0.4), transparent 50%),
+    radial-gradient(circle at 50% 85%, rgba(175, 92, 255, 0.45), transparent 60%);
+  opacity: 0.8;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
