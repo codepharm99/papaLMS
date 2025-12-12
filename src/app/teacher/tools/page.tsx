@@ -31,6 +31,24 @@ export default function TeacherToolsPage() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link
+          href="/teacher/tools/ai"
+          className="module-illustration light group block overflow-hidden rounded-2xl border border-indigo-100 bg-white/95 p-5 shadow-lg shadow-indigo-100/50 transition-transform hover:-translate-y-1"
+          style={{
+            "--module-accent-1": "214 86% 76%",
+            "--module-accent-2": "245 80% 74%",
+            "--module-accent-3": "276 76% 70%",
+          } as CSSProperties}
+        >
+          <div className="mb-1 text-xs uppercase tracking-wide text-indigo-600">AI-помощник</div>
+          <div className="text-base font-semibold text-gray-900">Чат для тестов и оценок</div>
+          <p className="mt-2 text-sm text-black">
+            Описывайте задачи в свободной форме — помощник создаст тесты или обновит оценки студентов ваших курсов.
+          </p>
+          <div className="mt-3 inline-flex items-center gap-2 text-sm text-indigo-600 group-hover:underline">
+            Открыть чат →
+          </div>
+        </Link>
+        <Link
           href="/teacher/tools/presentations"
           className="module-illustration light group block overflow-hidden rounded-2xl border border-indigo-100 bg-white/95 p-5 shadow-lg shadow-indigo-100/50 transition-transform hover:-translate-y-1"
           style={{
