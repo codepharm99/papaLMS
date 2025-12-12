@@ -121,6 +121,13 @@
   }
 }
 
+/* Neutralize dark-mode utility that forces white text and hurts contrast */
+.dark .dark\:text-gray-100,
+.dark\:text-gray-100:is(.dark *) {
+  color: inherit !important;
+  --color-gray-100: currentColor;
+}
+
 html.login-pattern {
   /* Brand colors for the login gradient */
   --c1: #c0d5e7;
@@ -165,38 +172,6 @@ html.login-pattern:not(.finisher-active)::after {
 html.login-pattern body {
   background: transparent !important;
   color: #111827;
-}
-
-html:not(.login-pattern) [class*="bg-white"] {
-  background-color: var(--card) !important;
-  color: var(--card-foreground);
-}
-html.login-pattern [class*="bg-white"] {
-  background-color: #fff !important;
-  color: #1f2937;
-}
-
-html:not(.login-pattern) .text-gray-900,
-html:not(.login-pattern) .text-gray-800,
-html:not(.login-pattern) .text-gray-700 {
-  color: var(--foreground) !important;
-}
-
-html:not(.login-pattern) .text-gray-600,
-html:not(.login-pattern) .text-gray-500 {
-  color: var(--muted-foreground) !important;
-}
-
-html:not(.login-pattern) .text-gray-400,
-html:not(.login-pattern) .text-gray-300,
-html:not(.login-pattern) .text-gray-200 {
-  color: #cfd6ff !important;
-}
-
-html:not(.login-pattern) .border-gray-100,
-html:not(.login-pattern) .border-gray-200,
-html:not(.login-pattern) .border-gray-300 {
-  border-color: var(--border) !important;
 }
 
 /* Respect users who prefer reduced motion */
@@ -296,6 +271,28 @@ html:not(.login-pattern) .border-gray-300 {
     animation: none !important;
     background-attachment: scroll;
   }
+}
+
+/* Performance-friendly overrides: simplify heavy animated surfaces */
+.module-illustration {
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.82));
+  box-shadow: none;
+}
+.module-illustration::before,
+.module-illustration::after {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+}
+
+.page-aurora {
+  background: none;
+}
+.page-aurora::before,
+.page-aurora::after {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
 }
 
 /* Full-page soft aurora background */

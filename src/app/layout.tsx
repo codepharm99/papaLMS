@@ -38,22 +38,16 @@ export default async function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
+      <body className="min-h-screen relative bg-gray-50 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
+        <AuroraBackground />
         <LanguageProvider>
           <UserProvider initialUser={initialUser}>
-            <Nav />
-            <main className="mx-auto max-w-6xl p-4 md:p-6">{children}</main>
+            <div className="relative z-10 flex min-h-screen flex-col">
+              <Nav />
+              <main className="mx-auto max-w-6xl p-4 md:p-6">{children}</main>
+            </div>
           </UserProvider>
         </LanguageProvider>
-    <html lang="ru">
-      <body className="min-h-screen relative bg-gradient-to-b from-[#020617] via-[#090b26] to-[#1c0a37]">
-        <AuroraBackground />
-        <UserProvider initialUser={initialUser}>
-          <div className="relative z-10 flex min-h-screen flex-col">
-            <Nav />
-            <main className="mx-auto max-w-6xl p-4 md:p-6">{children}</main>
-          </div>
-        </UserProvider>
       </body>
     </html>
   );

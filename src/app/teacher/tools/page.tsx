@@ -44,7 +44,7 @@ export default function TeacherToolsPage() {
             <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">beta</span>
           </div>
           <div className="text-base font-semibold text-gray-900">{tr("Генератор показов", "Slide generator")}</div>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-black">
             {tr("Создавайте слайды и открывайте показ во весь экран для студентов.", "Create slides and present full-screen to students.")}
           </p>
           <div className="mt-3 inline-flex items-center gap-2 text-sm text-indigo-600 group-hover:underline">
@@ -64,19 +64,15 @@ export default function TeacherToolsPage() {
           <div className="text-base font-semibold text-gray-900">{tr("Создание и прошедшие тесты", "Create and past tests")}</div>
           <div className="mt-3 inline-flex items-center text-sm text-indigo-600 group-hover:underline">
             {tr("Открыть", "Open")} →
-          <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Тестирование</div>
-          <div className="text-base font-medium">Создание тестов и прошлые тесты</div>
-          <div className="mt-3 inline-flex items-center text-sm text-blue-600 group-hover:underline">
-            Открыть →
           </div>
         </Link>
         <Link
           href="/teacher/tools/analytics"
-          className="group block rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+          className="group block rounded-xl border bg-white p-5 text-gray-900 shadow-sm transition-shadow hover:shadow-md"
         >
           <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Аналитика</div>
-          <div className="text-base font-medium">Тесты и студенты</div>
-          <p className="mt-2 text-sm text-gray-600">
+          <div className="text-base font-medium text-gray-900">Тесты и студенты</div>
+          <p className="mt-2 text-sm text-black">
             Сводка по созданным тестам, назначениям студентам и активности по публичным ссылкам.
           </p>
           <div className="mt-3 inline-flex items-center text-sm text-blue-600 group-hover:underline">
@@ -85,11 +81,11 @@ export default function TeacherToolsPage() {
         </Link>
         <Link
           href="/teacher/tools/marks"
-          className="group block rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+          className="group block rounded-xl border bg-white p-5 text-gray-900 shadow-sm transition-shadow hover:shadow-md"
         >
           <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Оценивание</div>
-          <div className="text-base font-medium">Выставление баллов</div>
-          <p className="mt-2 text-sm text-gray-600">
+          <div className="text-base font-medium text-gray-900">Выставление баллов</div>
+          <p className="mt-2 text-sm text-black">
             Выберите курс, студента и неделю, чтобы сохранить баллы за лекцию, практику, инд.работу, рейтинг, мидтерм или экзамен.
           </p>
           <div className="mt-3 inline-flex items-center text-sm text-blue-600 group-hover:underline">

@@ -124,10 +124,12 @@ export default function TeacherMarksTool() {
           { label: "Оценки" },
         ]}
       />
-      <div>
-        <div className="text-xs uppercase tracking-wide text-gray-500">Оценивание</div>
-        <h1 className="text-2xl font-semibold">Выставить баллы</h1>
-        <p className="text-sm text-gray-600">
+      <div className="space-y-2">
+        <div className="rounded-2xl bg-gradient-to-r from-indigo-700 via-purple-700 to-fuchsia-600 px-4 py-3 text-white shadow-md">
+          <div className="text-xs uppercase tracking-wide text-white/70">Оценивание</div>
+          <h1 className="mt-1 text-2xl font-semibold text-white">Выставить баллы</h1>
+        </div>
+        <p className="text-sm text-black">
           Выберите курс, студента и неделю, затем укажите баллы. Для мидтерма используйте неделю 7, для экзамена — неделю 14.
         </p>
       </div>
@@ -265,7 +267,7 @@ export default function TeacherMarksTool() {
         </div>
       </form>
 
-      <div className="rounded-xl border bg-white p-4 text-sm text-gray-600">
+      <div className="rounded-xl border bg-white p-4 text-sm text-black">
         Чтобы студенты видели баллы, они могут открыть страницу <Link href="/student/marks" className="text-blue-600 underline">«Оценки»</Link> в своём кабинете.
       </div>
     </div>

@@ -47,9 +47,11 @@ export default function Nav() {
     catalog: language === "ru" ? "Каталог" : "Catalog",
     myCourses: language === "ru" ? "Мои курсы" : "My courses",
     testing: language === "ru" ? "Тестирование" : "Testing",
+    marks: language === "ru" ? "Оценки" : "Grades",
     profile: language === "ru" ? "Профиль" : "Profile",
     tools: language === "ru" ? "Инструменты" : "Tools",
     invites: language === "ru" ? "Коды преподавателей" : "Teacher invites",
+    adminUsers: language === "ru" ? "Пользователи" : "Users",
     guest: language === "ru" ? "Гость" : "Guest",
   };
 
@@ -84,10 +86,9 @@ export default function Nav() {
             isActive={isMy}
           />
           {user?.role === "STUDENT" && (
-            <NavLink href="/student/tests" label={t.testing} isActive={isStudentTests} />
             <>
-              <NavLink href="/student/tests" label="Тестирование" isActive={isStudentTests} />
-              <NavLink href="/student/marks" label="Оценки" isActive={isStudentMarks} />
+              <NavLink href="/student/tests" label={t.testing} isActive={isStudentTests} />
+              <NavLink href="/student/marks" label={t.marks} isActive={isStudentMarks} />
             </>
           )}
           {user && <NavLink href="/profile" label={t.profile} isActive={pathname.startsWith("/profile")} />}
@@ -95,10 +96,9 @@ export default function Nav() {
             <NavLink href="/teacher/tools" label={t.tools} isActive={pathname.startsWith("/teacher/tools")} />
           )}
           {user?.role === "ADMIN" && (
-            <NavLink href="/admin/invites" label={t.invites} isActive={pathname.startsWith("/admin/invites")} />
             <>
-              <NavLink href="/admin/users" label="Пользователи" isActive={isAdminUsers} />
-              <NavLink href="/admin/invites" label="Коды преподавателей" isActive={isAdminInvites} />
+              <NavLink href="/admin/users" label={t.adminUsers} isActive={isAdminUsers} />
+              <NavLink href="/admin/invites" label={t.invites} isActive={isAdminInvites} />
             </>
           )}
         </nav>

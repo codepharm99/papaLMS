@@ -53,9 +53,9 @@ export default function CourseHeader({
   };
 
   return (
-    <div className="module-illustration light rounded-2xl border bg-white/95 p-4 shadow-sm" style={paint}>
+    <div className="module-illustration light rounded-2xl border bg-white/95 p-4 text-gray-900 shadow-sm" style={paint}>
       <div className="text-xs text-gray-500">{course.code} · {course.orgTag}</div>
-      <h1 className="mt-1 text-2xl font-semibold">{course.title}</h1>
+      <h1 className="mt-1 text-2xl font-semibold text-gray-900">{course.title}</h1>
       <div className="mt-1 text-sm text-gray-600">Преподаватель: {course.teacherName}</div>
       <div className="mt-3 flex items-center gap-3">
         <span className="text-sm text-gray-600">Зачислено: {course.enrolledCount}</span>
