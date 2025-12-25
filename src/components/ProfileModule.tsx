@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/components/user-context";
 import { useLanguage } from "@/components/language-context";
@@ -19,8 +20,17 @@ type ProfileShape = {
   email?: string | null;
 };
 
+type ProfileUpdatePayload = {
+  fullName: string;
+  bio: string;
+  settings: ProfileSettings;
+  avatarUrl?: string | null;
+  email?: string;
+};
+
 type FormState = {
   fullName: string;
+  email: string;
   bio: string;
   certificates: Array<{ title: string; url?: string; file?: File | null }>;
   links: { github: string; linkedin: string; website: string; other: string };
@@ -28,6 +38,7 @@ type FormState = {
 
 const emptyForm: FormState = {
   fullName: "",
+  email: "",
   bio: "",
   certificates: [],
   links: { github: "", linkedin: "", website: "", other: "" },
@@ -96,13 +107,19 @@ export default function ProfileModule() {
           setLoading(false);
           return;
         }
-        const data = await res.json().catch(() => ({}));
+        const data = (await res.json().catch(() => ({}))) as {
+          profile?: ProfileShape | null;
+          user?: { email?: string | null };
+        };
         if (!mounted) return;
+        const resolvedEmail =
+          data?.profile?.email ?? (typeof data?.user?.email === "string" ? data.user.email : "");
         if (data?.profile) {
           const normalized = normalizeSettings(data.profile.settings);
           setProfile(data.profile);
           setForm({
             fullName: data.profile.fullName ?? "",
+            email: resolvedEmail,
             bio: data.profile.bio ?? "",
             links: {
               github: normalized.links.github ?? "",
@@ -115,6 +132,11 @@ export default function ProfileModule() {
           setAvatarPreview(data.profile.avatarUrl ?? null);
         } else {
           setProfile(null);
+          setForm({
+            ...emptyForm,
+            fullName: user?.name ?? "",
+            email: resolvedEmail,
+          });
         }
       } catch (err) {
         console.error("Failed to load profile", err);
@@ -127,11 +149,17 @@ export default function ProfileModule() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, [user]);
 
   const validateForm = (state: FormState) => {
     const nextErrors: Record<string, string> = {};
     if (!state.fullName.trim()) nextErrors.fullName = "Укажите имя";
+    const emailValue = state.email.trim();
+    if (!emailValue) {
+      nextErrors.email = "Укажите email";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+      nextErrors.email = "Некорректный email";
+    }
     const urlFields: Array<keyof FormState["links"]> = ["github", "linkedin", "website", "other"];
     urlFields.forEach((field) => {
       const v = state.links[field];
@@ -163,11 +191,13 @@ export default function ProfileModule() {
     try {
       const settingsPayload = buildSettingsPayload(form);
       const hasCertificateFiles = form.certificates.some((c) => c.file);
+      const emailValue = form.email.trim();
       let res: Response;
       const wantsAvatarRemoval = Boolean(profile?.avatarUrl) && !avatarFile && !avatarPreview;
       if (avatarFile || hasCertificateFiles) {
         const fd = new FormData();
         fd.append("fullName", form.fullName);
+        fd.append("email", emailValue);
         fd.append("bio", form.bio);
         fd.append("settingsMeta", JSON.stringify(settingsPayload.meta));
         // create a File from the compressed blob so server can read name/type
@@ -180,7 +210,12 @@ export default function ProfileModule() {
         settingsPayload.newCertificateFiles.forEach((file) => fd.append("certificateFiles", file));
         res = await fetch("/api/profile", { method: "PATCH", body: fd });
       } else {
-        const bodyPayload: any = { fullName: form.fullName, bio: form.bio, settings: settingsPayload.settingsOnly };
+        const bodyPayload: ProfileUpdatePayload = {
+          fullName: form.fullName,
+          email: emailValue,
+          bio: form.bio,
+          settings: settingsPayload.settingsOnly,
+        };
         if (avatarPreview) bodyPayload.avatarUrl = avatarPreview;
         if (wantsAvatarRemoval) bodyPayload.avatarUrl = null;
         res = await fetch("/api/profile", {
@@ -199,6 +234,7 @@ export default function ProfileModule() {
       const normalized = normalizeSettings(data.profile.settings);
       setForm({
         fullName: data.profile.fullName ?? "",
+        email: data.profile.email ?? form.email,
         bio: data.profile.bio ?? "",
         links: {
           github: normalized.links.github ?? "",
@@ -209,24 +245,28 @@ export default function ProfileModule() {
         certificates: normalized.certificates.map((c) => ({ title: c.title, url: c.url })),
       });
       setEditMode(false);
+      await refresh();
       showToast(tr("Профиль сохранён", "Profile saved"), "success");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Save error:", err);
-      showToast(err?.message ?? tr("Ошибка при сохранении профиля", "Error saving profile"), "error");
+      const message = err instanceof Error
+        ? err.message
+        : tr("Ошибка при сохранении профиля", "Error saving profile");
+      showToast(message, "error");
     } finally {
       setSaving(false);
     }
   };
 
   const normalizeSettings = (settings: ProfileSettings | null | undefined): Required<ProfileSettings> => {
-    const linksRaw = (settings as any)?.links ?? {};
+    const linksRaw = settings?.links ?? {};
     const links: ProfileLinks = {
       github: typeof linksRaw.github === "string" ? linksRaw.github : undefined,
       linkedin: typeof linksRaw.linkedin === "string" ? linksRaw.linkedin : undefined,
       website: typeof linksRaw.website === "string" ? linksRaw.website : undefined,
       other: typeof linksRaw.other === "string" ? linksRaw.other : undefined,
     };
-    const certificatesRaw = Array.isArray((settings as any)?.certificates) ? (settings as any).certificates : [];
+    const certificatesRaw = Array.isArray(settings?.certificates) ? settings?.certificates : [];
     const certificates = certificatesRaw
       .map((c) => (c && typeof c.title === "string" && typeof c.url === "string" ? { title: c.title, url: c.url } : null))
       .filter((c): c is ProfileCertificate => !!c);
@@ -291,8 +331,9 @@ export default function ProfileModule() {
     setSaving(true);
     try {
       const normalized = normalizeSettings(prev.settings);
-      const body: any = {
+      const body: ProfileUpdatePayload = {
         fullName: prev.fullName ?? "",
+        email: prev.email ?? form.email,
         bio: prev.bio ?? "",
         avatarUrl: prev.avatarUrl ?? null,
         settings: { links: normalized.links, certificates: normalized.certificates },
@@ -309,6 +350,7 @@ export default function ProfileModule() {
       const normalizedCurrent = normalizeSettings(data.profile.settings);
       setForm({
         fullName: data.profile.fullName ?? "",
+        email: data.profile.email ?? form.email,
         bio: data.profile.bio ?? "",
         links: {
           github: normalizedCurrent.links.github ?? "",
@@ -318,9 +360,13 @@ export default function ProfileModule() {
         },
         certificates: normalizedCurrent.certificates.map((c) => ({ title: c.title, url: c.url })),
       });
+      await refresh();
       showToast(tr("Изменения откатены", "Changes reverted"), "success");
-    } catch (err: any) {
-      showToast(err?.message ?? tr("Ошибка при откате", "Error while reverting"), "error");
+    } catch (err: unknown) {
+      const message = err instanceof Error
+        ? err.message
+        : tr("Ошибка при откате", "Error while reverting");
+      showToast(message, "error");
     } finally {
       setSaving(false);
     }
@@ -332,7 +378,7 @@ export default function ProfileModule() {
       const reader = new FileReader();
       reader.onerror = () => reject(new Error('Failed to read file'));
       reader.onload = () => {
-        const img = new Image();
+        const img = new window.Image();
         img.onerror = () => reject(new Error('Failed to load image'));
         img.onload = () => {
           // calculate target size keeping aspect ratio
@@ -393,7 +439,7 @@ export default function ProfileModule() {
     try {
       const u = new URL(url);
       return u.host.replace(/^www\./, "");
-    } catch (e) {
+    } catch {
       return url;
     }
   };
@@ -605,7 +651,14 @@ export default function ProfileModule() {
           <div className="flex flex-col items-center">
             {profile?.avatarUrl ? (
               <div className="w-32 h-32 rounded-full overflow-hidden mb-4 ring-2 ring-blue-600 relative">
-                <img src={profile.avatarUrl} alt="avatar" className={`w-full h-full object-cover ${avatarBusy ? "opacity-70" : ""}`} />
+                <NextImage
+                  src={profile.avatarUrl}
+                  alt="avatar"
+                  fill
+                  sizes="128px"
+                  unoptimized
+                  className={`object-cover ${avatarBusy ? "opacity-70" : ""}`}
+                />
                 {avatarBusy && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white text-sm">
                     <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
@@ -768,7 +821,14 @@ export default function ProfileModule() {
                       }`}
                     >
                       {avatarPreview ? (
-                        <img src={avatarPreview} alt="avatar preview" className="w-full h-full object-cover" />
+                        <NextImage
+                          src={avatarPreview}
+                          alt="avatar preview"
+                          fill
+                          sizes="96px"
+                          unoptimized
+                          className="object-cover"
+                        />
                       ) : (
                         <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
                           {initials(form.fullName || user?.name)}
@@ -842,6 +902,21 @@ export default function ProfileModule() {
                   placeholder={tr("Иван Иванов", "John Doe")}
                 />
                 {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${labelTone}`}>{tr("Email", "Email")}</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => {
+                    clearError("email");
+                    setForm({ ...form, email: e.target.value });
+                  }}
+                  className={`mt-1 block w-full border rounded p-2 ${errors.email ? "border-red-500 ring-1 ring-red-300" : ""}`}
+                  placeholder="name@example.com"
+                />
+                {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
               </div>
 
               <div>
@@ -990,6 +1065,7 @@ export default function ProfileModule() {
                     const normalized = normalizeSettings(profile?.settings);
                     setForm({
                       fullName: profile?.fullName ?? '',
+                      email: profile?.email ?? form.email,
                       bio: profile?.bio ?? '',
                       links: {
                         github: normalized.links.github ?? "",

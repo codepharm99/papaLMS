@@ -1,7 +1,10 @@
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 
-const config = {
+type PrismaConfig = Parameters<typeof defineConfig>[0];
+type PrismaConfigWithSeed = PrismaConfig & { seed?: string };
+
+const config: PrismaConfigWithSeed = {
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
@@ -9,7 +12,6 @@ const config = {
   engine: "classic",
   // `seed` is accepted by the Prisma CLI but not included in the
   // TypeScript definition exposed by `prisma/config` in this project.
-  // Cast to `any` to avoid the TS error while keeping runtime behavior.
   seed: "node prisma/seed.cjs",
   datasources: {
     db: {
@@ -20,6 +22,6 @@ const config = {
   datasource: {
     url: env("DATABASE_URL"),
   },
-} as any;
+};
 
 export default defineConfig(config);

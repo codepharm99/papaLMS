@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { Textarea } from "@/components/ui/textarea";
@@ -422,9 +423,12 @@ export default function EditTestPage() {
                   </div>
                 </div>
                 <div className="justify-self-end rounded-lg border bg-white p-2">
-                  <img
+                  <Image
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareLink)}`}
                     alt="QR-код для ссылки"
+                    width={180}
+                    height={180}
+                    unoptimized
                     className="h-[180px] w-[180px]"
                   />
                 </div>

@@ -18,6 +18,9 @@ type SlideDraft = {
 };
 type Presentation = { id: string; title: string; slides: SlideDraft[]; createdAt: number };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 const makeId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -62,13 +65,18 @@ export default function PresentationsTool() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const liveSlide = liveSlides[liveIndex] || null;
   const liveHasImage = Boolean(liveSlide?.imageDataUrl);
-  const pickHeading = (s: SlideDraft | any) =>
-    typeof s?.heading === "string" && s.heading.trim()
-      ? s.heading.trim()
-      : typeof s?.text === "string"
-        ? s.text.trim()
-        : "";
-  const pickDetails = (s: SlideDraft | any) => (typeof s?.details === "string" ? s.details.trim() : "");
+  const pickHeading = (s: unknown) => {
+    if (!isRecord(s)) return "";
+    const heading = s.heading;
+    if (typeof heading === "string" && heading.trim()) return heading.trim();
+    const text = s.text;
+    return typeof text === "string" ? text.trim() : "";
+  };
+  const pickDetails = (s: unknown) => {
+    if (!isRecord(s)) return "";
+    const details = s.details;
+    return typeof details === "string" ? details.trim() : "";
+  };
   const liveHasText = Boolean(pickHeading(liveSlide) || pickDetails(liveSlide));
   const liveHeading = pickHeading(liveSlide);
   const liveDetails = pickDetails(liveSlide);
@@ -253,21 +261,27 @@ export default function PresentationsTool() {
         throw new Error(typeof data?.error === "string" ? data.error : "Не удалось загрузить презентации");
       }
       const items: Presentation[] = Array.isArray(data?.items)
-        ? data.items.map((p: any) => ({
-            id: String(p.id),
-            title: typeof p.title === "string" ? p.title : "Без названия",
-            createdAt: Number(p.createdAt) || Date.now(),
-            slides: Array.isArray(p.slides)
-              ? p.slides.map((s: any) => ({
-                  id: makeId(),
-                  heading: pickHeading(s),
-                  details: pickDetails(s),
-                  imageDataUrl: typeof s?.imageDataUrl === "string" ? s.imageDataUrl : undefined,
-                  imageAuthorName: typeof s?.imageAuthorName === "string" ? s.imageAuthorName : undefined,
-                  imageAuthorUrl: typeof s?.imageAuthorUrl === "string" ? s.imageAuthorUrl : undefined,
-                }))
-              : [],
-          }))
+        ? data.items.map((p: unknown) => {
+            const obj = isRecord(p) ? p : {};
+            const slidesRaw = Array.isArray(obj.slides) ? obj.slides : [];
+            const slides = slidesRaw.map((s) => {
+              const slideObj = isRecord(s) ? s : {};
+              return {
+                id: makeId(),
+                heading: pickHeading(slideObj),
+                details: pickDetails(slideObj),
+                imageDataUrl: typeof slideObj.imageDataUrl === "string" ? slideObj.imageDataUrl : undefined,
+                imageAuthorName: typeof slideObj.imageAuthorName === "string" ? slideObj.imageAuthorName : undefined,
+                imageAuthorUrl: typeof slideObj.imageAuthorUrl === "string" ? slideObj.imageAuthorUrl : undefined,
+              };
+            });
+            return {
+              id: String(obj.id ?? ""),
+              title: typeof obj.title === "string" ? obj.title : "Без названия",
+              createdAt: Number(obj.createdAt) || Date.now(),
+              slides,
+            };
+          })
         : [];
       setPresentations(items);
     } catch (e: unknown) {
@@ -307,18 +321,21 @@ export default function PresentationsTool() {
       }
       const item = data?.item;
       const created: Presentation = {
-        id: String(item?.id || makeId()),
-        title: typeof item?.title === "string" ? item.title : safeTitle,
-        createdAt: Number(item?.createdAt) || Date.now(),
-        slides: Array.isArray(item?.slides)
-          ? item.slides.map((s: any) => ({
-              id: makeId(),
-              heading: pickHeading(s),
-              details: pickDetails(s),
-              imageDataUrl: typeof s?.imageDataUrl === "string" ? s.imageDataUrl : undefined,
-              imageAuthorName: typeof s?.imageAuthorName === "string" ? s.imageAuthorName : undefined,
-              imageAuthorUrl: typeof s?.imageAuthorUrl === "string" ? s.imageAuthorUrl : undefined,
-            }))
+        id: String(isRecord(item) ? item.id ?? makeId() : makeId()),
+        title: isRecord(item) && typeof item.title === "string" ? item.title : safeTitle,
+        createdAt: isRecord(item) ? Number(item.createdAt) || Date.now() : Date.now(),
+        slides: isRecord(item) && Array.isArray(item.slides)
+          ? item.slides.map((s) => {
+              const slideObj = isRecord(s) ? s : {};
+              return {
+                id: makeId(),
+                heading: pickHeading(slideObj),
+                details: pickDetails(slideObj),
+                imageDataUrl: typeof slideObj.imageDataUrl === "string" ? slideObj.imageDataUrl : undefined,
+                imageAuthorName: typeof slideObj.imageAuthorName === "string" ? slideObj.imageAuthorName : undefined,
+                imageAuthorUrl: typeof slideObj.imageAuthorUrl === "string" ? slideObj.imageAuthorUrl : undefined,
+              };
+            })
           : preparedSlides.map(s => ({ ...s, id: makeId() })),
       };
       setPresentations(prev => [created, ...prev]);

@@ -20,13 +20,12 @@ const detectSystemLanguage = (): Language => {
 };
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("ru");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = (localStorage.getItem(LANG_KEY) as Language | null) || null;
-    setLanguageState(stored ?? detectSystemLanguage());
-  }, []);
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window === "undefined") return "ru";
+    const stored = localStorage.getItem(LANG_KEY);
+    if (stored === "ru" || stored === "en") return stored;
+    return detectSystemLanguage();
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;

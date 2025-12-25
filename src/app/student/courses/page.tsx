@@ -10,7 +10,7 @@ import { useLanguage } from "@/components/language-context";
 export default function StudentCoursesPage() {
   const { user } = useCurrentUser();
   const { language } = useLanguage();
-  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
+  const tr = useCallback((ru: string, en: string) => (language === "ru" ? ru : en), [language]);
   const [items, setItems] = useState<CourseVM[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export default function StudentCoursesPage() {
     }
     const data = await res.json();
     setItems(data.items ?? []);
-  }, [query, language]);
+  }, [query, tr]);
 
   useEffect(() => {
     if (user?.role !== "STUDENT") return;

@@ -4,6 +4,7 @@ import Nav from "@/components/Nav";
 import { UserProvider } from "@/components/user-context";
 import { currentUser } from "@/lib/auth";
 import { LanguageProvider } from "@/components/language-context";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "papaLMS",
@@ -30,7 +31,19 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const me = await currentUser();
-  const initialUser = me ? { id: me.id, name: me.name, role: me.role } : null;
+  let avatarUrl: string | null = null;
+  if (me) {
+    try {
+      const profile = await prisma.profile.findUnique({
+        where: { userId: me.id },
+        select: { avatarUrl: true },
+      });
+      avatarUrl = profile?.avatarUrl ?? null;
+    } catch {
+      avatarUrl = null;
+    }
+  }
+  const initialUser = me ? { id: me.id, name: me.name, role: me.role, avatarUrl } : null;
 
   return (
     <html lang="ru" suppressHydrationWarning>

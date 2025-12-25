@@ -13,7 +13,7 @@ import {
 } from "react";
 import type { Role } from "@/lib/mockdb";
 
-type User = { id: string; name: string; role: Role } | null;
+type User = { id: string; name: string; role: Role; avatarUrl?: string | null } | null;
 
 type UserContextValue = {
   user: User;

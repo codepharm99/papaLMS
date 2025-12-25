@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-context";
 
@@ -12,7 +12,7 @@ export default function StudentTestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { language } = useLanguage();
-  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
+  const tr = useCallback((ru: string, en: string) => (language === "ru" ? ru : en), [language]);
   const heroPaint: CSSProperties = {
     "--module-accent-1": "217 92% 68%",
     "--module-accent-2": "203 88% 64%",
@@ -49,7 +49,7 @@ export default function StudentTestsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tr]);
 
   return (
     <div className="page-aurora space-y-5 rounded-3xl p-1" style={pagePaint}>

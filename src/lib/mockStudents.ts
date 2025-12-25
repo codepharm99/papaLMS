@@ -1,12 +1,12 @@
-import { generateScores } from "./generateScores";
+import { generateStudentScores } from "./generateScores";
 
 export const mockStudents = [
   {
     name: "Kairat",
-    scores: generateScores("Kairat"),
+    scores: generateStudentScores("Kairat"),
   },
   {
     name: "Aruzhan",
-    scores: generateScores("Aruzhan"),
+    scores: generateStudentScores("Aruzhan"),
   },
 ];

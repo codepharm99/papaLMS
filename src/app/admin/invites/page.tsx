@@ -63,7 +63,6 @@ export default function AdminInvitesPage() {
   }, [router, tr]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 

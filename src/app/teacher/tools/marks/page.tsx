@@ -52,6 +52,9 @@ const clampScore = (value: number | "" | null | undefined) => {
   return Math.min(100, Math.max(0, parsed));
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 const normalizeSavedDraft = (draft: ScoreDraft): ScoreDraft => ({
   lectureScore: clampScore(draft.lectureScore) ?? 0,
   practiceScore: clampScore(draft.practiceScore) ?? 0,
@@ -119,7 +122,14 @@ export default function TeacherMarksTool() {
       }
       const data = await res.json().catch(() => ({}));
       const items = Array.isArray(data?.items)
-        ? data.items.map((c: any) => ({ id: String(c.id), title: c.title ?? "", code: c.code ?? "" }))
+        ? data.items.map((c: unknown) => {
+            const obj = isRecord(c) ? c : {};
+            return {
+              id: String(obj.id ?? ""),
+              title: typeof obj.title === "string" ? obj.title : "",
+              code: typeof obj.code === "string" ? obj.code : "",
+            };
+          })
         : [];
       setCourses(items);
       setSelectedCourse(items[0]?.id ?? "");
@@ -142,7 +152,14 @@ export default function TeacherMarksTool() {
       }
       const data = await res.json().catch(() => ({}));
       const items = Array.isArray(data?.items)
-        ? data.items.map((s: any) => ({ id: String(s.id), name: s.name ?? "", username: s.username ?? "" }))
+        ? data.items.map((s: unknown) => {
+            const obj = isRecord(s) ? s : {};
+            return {
+              id: String(obj.id ?? ""),
+              name: typeof obj.name === "string" ? obj.name : "",
+              username: typeof obj.username === "string" ? obj.username : "",
+            };
+          })
         : [];
       setStudents(items);
     };

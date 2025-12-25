@@ -17,21 +17,20 @@ export async function getCurrentUserOrThrow() {
         if (user) return user;
       }
     }
-  } catch (e) {
+  } catch {
     // игнорируем — может быть не установлен next-auth
   }
 
   // 2) Если у вас есть своя server helper - используйте его. (пример: src/lib/auth.ts)
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const auth = require("@/lib/auth");
+    const auth = await import("@/lib/auth").catch(() => null);
     // support multiple possible helper names (projects vary)
     const getter = auth?.getCurrentUser ?? auth?.currentUser ?? auth?.getCurrentUserOrThrow ?? auth?.default;
     if (getter) {
       const u = await getter();
       if (u?.id) return u;
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
 

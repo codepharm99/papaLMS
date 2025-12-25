@@ -19,7 +19,7 @@ export default function TeacherCoursesPage() {
   const { user } = useCurrentUser();
   const router = useRouter();
   const { language } = useLanguage();
-  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
+  const tr = useCallback((ru: string, en: string) => (language === "ru" ? ru : en), [language]);
   const [items, setItems] = useState<TeacherCourse[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export default function TeacherCoursesPage() {
     }
     const data = await res.json();
     setItems(data.items);
-  }, [router]);
+  }, [router, tr]);
 
   useEffect(() => {
     if (user?.role !== "TEACHER") return;

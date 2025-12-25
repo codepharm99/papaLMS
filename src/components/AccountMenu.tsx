@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, Settings, User, Book } from "lucide-react";
 import { useLanguage } from "@/components/language-context";
 
-type UserShort = { id: string; name?: string; role?: string } | null;
+type UserShort = { id: string; name?: string; role?: string; avatarUrl?: string | null } | null;
 
 export default function AccountMenu({ user }: { user: UserShort }) {
   const [open, setOpen] = useState(false);
@@ -38,7 +39,7 @@ export default function AccountMenu({ user }: { user: UserShort }) {
   async function doLogout() {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-    } catch (e) {
+    } catch {
       // ignore
     }
     router.push("/login");
@@ -53,7 +54,18 @@ export default function AccountMenu({ user }: { user: UserShort }) {
         className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-800 hover:ring-2 hover:ring-offset-2 hover:ring-gray-200"
         title={user?.name ?? tr("Аккаунт", "Account")}
       >
-        {initials}
+        {user?.avatarUrl ? (
+          <Image
+            src={user.avatarUrl}
+            alt={user?.name ? `${user.name} avatar` : "avatar"}
+            width={40}
+            height={40}
+            unoptimized
+            className="h-10 w-10 rounded-full object-cover"
+          />
+        ) : (
+          initials
+        )}
       </button>
 
       {open && (

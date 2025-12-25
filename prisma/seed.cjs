@@ -182,7 +182,6 @@ async function main() {
   await upsertProfile({ userId: teacher.id, fullName: teacher.name, bio: "Преподаватель курса", email: teacher.email });
   await upsertProfile({ userId: student.id, fullName: student.name, bio: "Студент курса", email: student.email });
 
-  const courses = await Promise.all([
   const baseCourses = await Promise.all([
     upsertCourse({
       id: "c1",
