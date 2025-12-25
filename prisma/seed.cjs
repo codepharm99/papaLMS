@@ -647,7 +647,7 @@ async function main() {
   await prisma.teacherInvite.upsert({
     where: { code: "TEACH-2025" },
     update: {},
-    create: { id: "ti1", code: "TEACH-2025", createdById: admin.id },
+    create: { id: "ti1", code: "TEACH-2025", iin: "990101123456", createdById: admin.id },
   });
 
   console.log("✅ Сиды готовы");

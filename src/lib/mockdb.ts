@@ -48,6 +48,7 @@ export type TeacherCourse = {
 export type TeacherInviteInfo = {
   id: string;
   code: string;
+  iin?: string | null;
   createdAt: number;
   createdBy: { id: string; name: string };
   usedAt?: number | null;
@@ -170,6 +171,7 @@ const sanitizeUser = (user: { id: string; username: string; name: string; role: 
 const sanitizeInvite = (invite: {
   id: string;
   code: string;
+  iin: string | null;
   createdAt: Date;
   createdBy: { id: string; name: string };
   usedAt: Date | null;
@@ -177,6 +179,7 @@ const sanitizeInvite = (invite: {
 }): TeacherInviteInfo => ({
   id: invite.id,
   code: invite.code,
+  iin: invite.iin,
   createdAt: invite.createdAt.getTime(),
   createdBy: invite.createdBy,
   usedAt: invite.usedAt?.getTime(),
@@ -185,6 +188,7 @@ const sanitizeInvite = (invite: {
 
 const normalizeUsername = (username: string) => username.trim().toLowerCase();
 const normalizeName = (name: string) => name.trim();
+const normalizeIin = (iin: string) => iin.replace(/\D/g, "");
 
 export async function findUserByCreds(username: string, password: string): Promise<User | null> {
   if (!username || !password) return null;
@@ -393,7 +397,9 @@ export async function createCourseForTeacher(
   }
 }
 
-type RegisterResult = { ok: true; user: User } | { error: "USERNAME_TAKEN" | "INVITE_REQUIRED" | "INVITE_INVALID" };
+type RegisterResult =
+  | { ok: true; user: User }
+  | { error: "USERNAME_TAKEN" | "INVITE_REQUIRED" | "INVITE_INVALID" | "IIN_REQUIRED" | "IIN_INVALID" | "IIN_MISMATCH" };
 
 export async function registerStudent(data: { username: string; name: string; password: string }): Promise<RegisterResult> {
   const username = normalizeUsername(data.username);
@@ -418,15 +424,21 @@ export async function registerTeacher(data: {
   name: string;
   password: string;
   inviteCode?: string;
+  inviteToken?: string;
+  iin?: string;
 }): Promise<RegisterResult> {
-  const code = data.inviteCode?.trim().toUpperCase();
+  const code = (data.inviteToken ?? data.inviteCode)?.trim().toUpperCase() || "";
   if (!code) return { error: "INVITE_REQUIRED" };
+  const iin = normalizeIin(String(data.iin ?? ""));
+  if (!iin) return { error: "IIN_REQUIRED" };
+  if (iin.length !== 12) return { error: "IIN_INVALID" };
 
   const invite = await prisma.teacherInvite.findUnique({
     where: { code },
     include: { usedBy: true },
   });
   if (!invite || invite.usedById) return { error: "INVITE_INVALID" };
+  if (!invite.iin || invite.iin !== iin) return { error: "IIN_MISMATCH" };
 
   const username = normalizeUsername(data.username);
   const name = normalizeName(data.name);
@@ -450,8 +462,15 @@ export async function registerTeacher(data: {
   }
 }
 
-export async function createTeacherInvite(admin: User) {
+export async function createTeacherInvite(admin: User, rawIin: string) {
   if (admin.role !== "ADMIN") return { error: "FORBIDDEN" as const };
+  const iin = normalizeIin(rawIin ?? "");
+  if (!iin) return { error: "IIN_REQUIRED" as const };
+  if (iin.length !== 12) return { error: "IIN_INVALID" as const };
+  const existsByIin = await prisma.teacherInvite.findFirst({
+    where: { iin, usedById: null },
+  });
+  if (existsByIin) return { error: "IIN_EXISTS" as const };
   let code = "";
   for (let i = 0; i < 5; i++) {
     code = randomBytes(4).toString("hex").toUpperCase();
@@ -459,7 +478,7 @@ export async function createTeacherInvite(admin: User) {
     if (!exists) break;
   }
   const invite = await prisma.teacherInvite.create({
-    data: { code, createdById: admin.id },
+    data: { code, iin, createdById: admin.id },
     include: { createdBy: true, usedBy: true },
   });
   return { ok: true as const, invite: sanitizeInvite(invite) };
