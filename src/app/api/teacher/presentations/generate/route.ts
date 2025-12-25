@@ -6,7 +6,7 @@ import { getOllamaConfig } from "@/lib/ollama";
 
 type OllamaResponse = { response?: string | null };
 
-const { model: DEFAULT_MODEL, baseUrl: BASE_URL } = getOllamaConfig();
+const { model: DEFAULT_MODEL, baseUrl: BASE_URL, timeoutMs: OLLAMA_TIMEOUT_MS } = getOllamaConfig();
 const PROMPT_PATH =
   process.env.PRESENTATION_PROMPT_PATH || path.join(process.cwd(), "prompts", "presentation.md");
 const PEXELS_KEY = process.env.PEXELS_API_KEY || "";
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
   const prompt = renderPrompt(template, { topic, slides: requestedSlides });
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60_000); // allow slower responses from remote Ollama
+  const timeoutId = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
 
   try {
     const res = await fetch(`${BASE_URL}/api/generate`, {

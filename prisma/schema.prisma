@@ -130,6 +130,7 @@ model Question {
   testId       String
   test         Test     @relation(fields: [testId], references: [id])
   text         String
+  answerText   String?
   // Для простоты: варианты и правильные ответы
   options      Json?
   correctIndex Int?
@@ -147,6 +148,12 @@ model TestAssignment {
   assignedBy    User     @relation("GivenAssignments", fields: [assignedById], references: [id])
   dueAt         DateTime?
   status        String   @default("ASSIGNED")
+  score         Int?
+  total         Int?
+  completedAt   DateTime?
+  answers       Json?
+  feedback      Json?
+  reviewedAt    DateTime?
   createdAt     DateTime @default(now())
 }
 

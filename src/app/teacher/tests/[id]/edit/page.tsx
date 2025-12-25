@@ -15,10 +15,10 @@ type TestItem = {
   publishedAt?: number | null;
   createdAt: number;
 };
-type QuestionItem = { id: string; testId: string; text: string; options?: string[]; correctIndex?: number; correctIndices?: number[] | null; createdAt: number };
+type QuestionItem = { id: string; testId: string; text: string; answerText?: string | null; options?: string[]; correctIndex?: number | null; correctIndices?: number[] | null; createdAt: number };
 type StudentItem = { id: string; name: string };
 type StudentStatus = { id: string; name: string; status: "ASSIGNED" | "IN_PROGRESS" | "COMPLETED"; timestamp: number };
-type QuestionPayload = { text: string; options?: string[]; correctIndex?: number | null; correctIndices?: number[] | null };
+type QuestionPayload = { text: string; options?: string[] | null; correctIndex?: number | null; correctIndices?: number[] | null; answerText?: string | null };
 type GuestAttempt = { id: string; name: string; score: number; total: number; createdAt: number };
 
 export default function EditTestPage() {
@@ -26,7 +26,7 @@ export default function EditTestPage() {
   const testId = params?.id as string;
 
   const [test, setTest] = useState<TestItem | null>(null);
-  const [, setQuestions] = useState<QuestionItem[]>([]);
+  const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [studentStatus, setStudentStatus] = useState<StudentStatus[]>([]);
   const [guestAttempts, setGuestAttempts] = useState<GuestAttempt[]>([]);
@@ -42,6 +42,10 @@ export default function EditTestPage() {
   const [options, setOptions] = useState<string[]>([""]);
   const [correct, setCorrect] = useState<number | null>(null);
   const [correctIndices, setCorrectIndices] = useState<number[]>([]);
+  const [answerText, setAnswerText] = useState("");
+
+  const [questionSavingId, setQuestionSavingId] = useState<string | null>(null);
+  const [questionSaveError, setQuestionSaveError] = useState<string | null>(null);
 
   const [assignStudentId, setAssignStudentId] = useState("");
   const [assignDueAt, setAssignDueAt] = useState("");
@@ -154,21 +158,25 @@ export default function EditTestPage() {
       setOptions([""]);
       setCorrect(null);
       setCorrectIndices([]);
+      setAnswerText("");
     }
     if (next === "multi") {
       setOptions(["", ""]);
       setCorrect(null);
       setCorrectIndices([]);
+      setAnswerText("");
     }
     if (next === "truefalse") {
       setOptions(["Верно", "Неверно"]);
       setCorrect(null);
       setCorrectIndices([]);
+      setAnswerText("");
     }
     if (next === "long") {
       setOptions([]);
       setCorrect(null);
       setCorrectIndices([]);
+      setAnswerText("");
     }
   };
 
@@ -185,6 +193,136 @@ export default function EditTestPage() {
     if (correct == null) return false;
     return correct >= 0 && correct < filled.length;
   }, [text, options, correct, correctIndices, questionType]);
+
+  const getQuestionKind = (q: QuestionItem) => {
+    const opts = q.options ?? null;
+    if (!opts || opts.length === 0) return "long";
+    if (opts.length === 2 && opts[0]?.toLowerCase().includes("вер") && opts[1]?.toLowerCase().includes("невер")) {
+      return "truefalse";
+    }
+    if (Array.isArray(q.correctIndices) && q.correctIndices.length > 0) return "multi";
+    return "multiple";
+  };
+
+  const updateQuestionField = (id: string, updates: Partial<QuestionItem>) => {
+    setQuestions(prev => prev.map(q => (q.id === id ? { ...q, ...updates } : q)));
+  };
+
+  const updateQuestionOption = (id: string, idx: number, value: string) => {
+    setQuestions(prev =>
+      prev.map(q => {
+        if (q.id !== id) return q;
+        const next = Array.isArray(q.options) ? [...q.options] : [];
+        next[idx] = value;
+        return { ...q, options: next };
+      })
+    );
+  };
+
+  const addQuestionOption = (id: string) => {
+    setQuestions(prev =>
+      prev.map(q => {
+        if (q.id !== id) return q;
+        const next = Array.isArray(q.options) ? [...q.options] : [];
+        next.push("");
+        return { ...q, options: next };
+      })
+    );
+  };
+
+  const removeQuestionOption = (id: string, idx: number) => {
+    setQuestions(prev =>
+      prev.map(q => {
+        if (q.id !== id) return q;
+        const next = Array.isArray(q.options) ? [...q.options] : [];
+        next.splice(idx, 1);
+        let nextCorrect = q.correctIndex ?? null;
+        let nextCorrectIndices = Array.isArray(q.correctIndices) ? [...q.correctIndices] : [];
+        if (nextCorrect === idx) nextCorrect = null;
+        if (nextCorrect != null && idx < nextCorrect) nextCorrect = nextCorrect - 1;
+        if (nextCorrectIndices.length > 0) {
+          nextCorrectIndices = nextCorrectIndices.filter(i => i !== idx).map(i => (i > idx ? i - 1 : i));
+        }
+        return { ...q, options: next, correctIndex: nextCorrect, correctIndices: nextCorrectIndices };
+      })
+    );
+  };
+
+  const toggleQuestionCorrectIndex = (id: string, idx: number) => {
+    setQuestions(prev =>
+      prev.map(q => {
+        if (q.id !== id) return q;
+        const current = Array.isArray(q.correctIndices) ? q.correctIndices : [];
+        const next = current.includes(idx) ? current.filter(i => i !== idx) : [...current, idx];
+        return { ...q, correctIndices: next };
+      })
+    );
+  };
+
+  const saveQuestion = async (q: QuestionItem) => {
+    setQuestionSaveError(null);
+    setQuestionSavingId(q.id);
+    const kind = getQuestionKind(q);
+    const text = q.text.trim();
+    if (!text) {
+      setQuestionSaveError("Текст вопроса обязателен.");
+      setQuestionSavingId(null);
+      return;
+    }
+    const optionsRaw = Array.isArray(q.options) ? q.options.map(o => o.trim()) : [];
+    const optionsClean = optionsRaw.filter(Boolean);
+    let payload: QuestionPayload = { text, answerText: q.answerText ?? null };
+    if (kind === "long") {
+      payload = { ...payload, options: null, correctIndex: null, correctIndices: null };
+    } else if (kind === "multi") {
+      payload = {
+        ...payload,
+        options: optionsClean,
+        correctIndices: Array.isArray(q.correctIndices) ? q.correctIndices : [],
+        correctIndex: null,
+      };
+    } else {
+      payload = {
+        ...payload,
+        options: optionsClean,
+        correctIndex: q.correctIndex ?? null,
+        correctIndices: null,
+      };
+    }
+    try {
+      const res = await fetch(`/api/teacher/tests/${testId}/questions`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: q.id, ...payload }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || "Ошибка сохранения");
+      setQuestions(prev => prev.map(item => (item.id === q.id ? j.item : item)));
+    } catch (e: unknown) {
+      setQuestionSaveError(e instanceof Error ? e.message : "Ошибка сохранения");
+    } finally {
+      setQuestionSavingId(null);
+    }
+  };
+
+  const deleteQuestion = async (id: string) => {
+    setQuestionSaveError(null);
+    setQuestionSavingId(id);
+    try {
+      const res = await fetch(`/api/teacher/tests/${testId}/questions`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || "Ошибка удаления");
+      setQuestions(prev => prev.filter(q => q.id !== id));
+    } catch (e: unknown) {
+      setQuestionSaveError(e instanceof Error ? e.message : "Ошибка удаления");
+    } finally {
+      setQuestionSavingId(null);
+    }
+  };
 
   const isPublished = !!test?.publishedAt;
   const shareLink = useMemo(() => {
@@ -220,6 +358,7 @@ export default function EditTestPage() {
       body.options = undefined;
       body.correctIndex = null;
       body.correctIndices = null;
+      body.answerText = answerText.trim() || null;
     } else if (questionType === "truefalse") {
       body.options = ["Верно", "Неверно"];
       body.correctIndex = correct ?? null;
@@ -244,6 +383,7 @@ export default function EditTestPage() {
         setQuestions(prev => [...prev, j.item]);
         setText("");
         setType("multiple");
+        setAnswerText("");
       }
     } catch (e) { console.error(e); }
   };
@@ -363,13 +503,132 @@ export default function EditTestPage() {
                 )}
 
                 {questionType === "long" && (
-                  <div className="rounded-md border bg-gray-50 p-3 text-sm text-gray-600">
-                    Студент даст развернутый ответ в текстовом поле.
+                  <div className="grid gap-2">
+                    <div className="rounded-md border bg-gray-50 p-3 text-sm text-gray-600">
+                      Студент даст развернутый ответ в текстовом поле.
+                    </div>
+                    <label className="grid gap-1">
+                      <span className="text-xs uppercase tracking-wide text-gray-500">Пример ответа (опционально)</span>
+                      <Textarea
+                        value={answerText}
+                        onChange={e => setAnswerText(e.target.value)}
+                        placeholder="Краткий образец правильного ответа"
+                      />
+                    </label>
                   </div>
                 )}
 
                 <Button type="submit" disabled={!canSubmit}>Сохранить вопрос</Button>
               </form>
+            )}
+          </section>
+
+          {/* Редактирование вопросов */}
+          <section className="border p-4 rounded-xl bg-white space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">Текущие вопросы</h2>
+              <span className="text-xs text-gray-500">Всего: {questions.length}</span>
+            </div>
+            {questions.length === 0 ? (
+              <div className="text-sm text-gray-600">Вопросов пока нет.</div>
+            ) : (
+              <div className="space-y-3">
+                {questions.map((q, idx) => {
+                  const kind = getQuestionKind(q);
+                  const opts = Array.isArray(q.options) ? q.options : [];
+                  return (
+                    <div key={q.id} className="rounded-xl border bg-white p-4">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <div className="text-xs text-gray-500">
+                          Вопрос {idx + 1} · {kind === "long" ? "Длинный ответ" : kind === "multi" ? "Несколько правильных" : kind === "truefalse" ? "Верно/Неверно" : "Один правильный"}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>{new Date(q.createdAt).toLocaleDateString("ru-RU")}</span>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => saveQuestion(q)}
+                            disabled={questionSavingId === q.id || isPublished}
+                          >
+                            {questionSavingId === q.id ? "Сохраняем..." : "Сохранить"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => deleteQuestion(q.id)}
+                            disabled={questionSavingId === q.id || isPublished}
+                          >
+                            Удалить
+                          </Button>
+                        </div>
+                      </div>
+                      <Textarea
+                        value={q.text}
+                        onChange={e => updateQuestionField(q.id, { text: e.target.value })}
+                        className="min-h-20"
+                        placeholder="Текст вопроса"
+                        disabled={isPublished}
+                      />
+
+                      {kind === "long" ? (
+                        <label className="mt-3 grid gap-1">
+                          <span className="text-xs uppercase tracking-wide text-gray-500">Пример ответа</span>
+                          <Textarea
+                            value={q.answerText ?? ""}
+                            onChange={e => updateQuestionField(q.id, { answerText: e.target.value })}
+                            placeholder="Образец правильного ответа"
+                            disabled={isPublished}
+                          />
+                        </label>
+                      ) : (
+                        <div className="mt-3 space-y-2">
+                          <div className="text-xs text-gray-500">
+                            {kind === "multi" ? "Отметьте все правильные варианты." : "Выберите один правильный вариант."}
+                          </div>
+                          {opts.map((opt, optIdx) => (
+                            <div key={`${q.id}-${optIdx}`} className="flex items-center gap-2">
+                              {kind === "multi" ? (
+                                <input
+                                  type="checkbox"
+                                  checked={Array.isArray(q.correctIndices) && q.correctIndices.includes(optIdx)}
+                                  onChange={() => toggleQuestionCorrectIndex(q.id, optIdx)}
+                                  disabled={isPublished}
+                                />
+                              ) : (
+                                <input
+                                  type="radio"
+                                  name={`q-${q.id}`}
+                                  checked={q.correctIndex === optIdx}
+                                  onChange={() => updateQuestionField(q.id, { correctIndex: optIdx, correctIndices: [] })}
+                                  disabled={isPublished}
+                                />
+                              )}
+                              <Input
+                                value={opt}
+                                onChange={e => updateQuestionOption(q.id, optIdx, e.target.value)}
+                                placeholder={`Вариант ${optIdx + 1}`}
+                                disabled={isPublished}
+                              />
+                              <Button type="button" onClick={() => removeQuestionOption(q.id, optIdx)} disabled={isPublished}>
+                                Удалить
+                              </Button>
+                            </div>
+                          ))}
+                          {kind !== "truefalse" && (
+                            <Button type="button" onClick={() => addQuestionOption(q.id)} disabled={isPublished}>
+                              Добавить вариант
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {questionSaveError && <div className="text-sm text-red-600">{questionSaveError}</div>}
+            {isPublished && (
+              <div className="text-xs text-gray-500">Тест опубликован. Редактирование вопросов недоступно.</div>
             )}
           </section>
 

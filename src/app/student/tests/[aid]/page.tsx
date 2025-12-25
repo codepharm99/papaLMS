@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 
 type Assignment = { id: string; test: { id: string; title: string }; dueAt?: number | null; status: string };
 type Q = { id: string; text: string; options?: string[] | null; multiSelect?: boolean };
+type AnswerMap = Record<string, number | number[] | string | null>;
+type FeedbackMap = Record<string, string>;
 
 export default function TakeTestPage() {
   const params = useParams<{ aid: string }>();
@@ -13,12 +15,14 @@ export default function TakeTestPage() {
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [questions, setQuestions] = useState<Q[]>([]);
+  const [storedAnswers, setStoredAnswers] = useState<AnswerMap | null>(null);
+  const [storedFeedback, setStoredFeedback] = useState<FeedbackMap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeLeftMs, setTimeLeftMs] = useState<number | null>(null);
 
   // answers: map questionId -> number (index), number[] (multi), or string (text)
-  const [answers, setAnswers] = useState<Record<string, number | number[] | string | null>>({});
+  const [answers, setAnswers] = useState<AnswerMap>({});
   const [result, setResult] = useState<{ score: number; total: number } | null>(null);
 
   useEffect(() => {
@@ -29,10 +33,12 @@ export default function TakeTestPage() {
       try {
         const r = await fetch(`/api/student/tests/${aid}`, { cache: "no-store" });
         if (!r.ok) throw new Error("Не удалось загрузить тест");
-        const j: { assignment: Assignment; questions: Q[] } = await r.json();
+        const j: { assignment: Assignment; questions: Q[]; answers?: AnswerMap | null; feedback?: FeedbackMap | null } = await r.json();
         if (!cancelled) {
           setAssignment(j.assignment);
           setQuestions(j.questions ?? []);
+          setStoredAnswers(j.answers ?? null);
+          setStoredFeedback(j.feedback ?? null);
         }
       } catch (e: unknown) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Ошибка загрузки");
@@ -101,6 +107,14 @@ export default function TakeTestPage() {
       setError(j?.error || "Не удалось отправить ответы");
     } else {
       setResult({ score: j.score, total: j.total });
+      const refreshed = await fetch(`/api/student/tests/${aid}`, { cache: "no-store" });
+      if (refreshed.ok) {
+        const refreshedData = await refreshed.json().catch(() => ({}));
+        setAssignment(refreshedData.assignment ?? null);
+        setQuestions(refreshedData.questions ?? []);
+        setStoredAnswers(refreshedData.answers ?? null);
+        setStoredFeedback(refreshedData.feedback ?? null);
+      }
     }
   };
 
@@ -190,6 +204,32 @@ export default function TakeTestPage() {
             )}
           </div>
         </form>
+      )}
+
+      {assignment?.status === "COMPLETED" && storedFeedback && (
+        <section className="rounded-xl border bg-white p-4 space-y-3">
+          <h2 className="text-lg font-semibold">Фидбэк по ответам</h2>
+          {questions.map((q, idx) => {
+            const feedback = storedFeedback[q.id];
+            if (!feedback) return null;
+            const answer = storedAnswers?.[q.id];
+            const answerLabel = Array.isArray(answer)
+              ? answer.map(a => Number(a) + 1).join(", ")
+              : typeof answer === "number"
+                ? String(Number(answer) + 1)
+                : typeof answer === "string"
+                  ? answer
+                  : "—";
+            return (
+              <div key={q.id} className="rounded-lg border bg-slate-50 p-3">
+                <div className="text-xs text-gray-500">Вопрос {idx + 1}</div>
+                <div className="font-medium text-gray-900">{q.text}</div>
+                <div className="mt-2 text-xs text-gray-500">Ваш ответ: {answerLabel}</div>
+                <div className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{feedback}</div>
+              </div>
+            );
+          })}
+        </section>
       )}
     </div>
   );

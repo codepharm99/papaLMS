@@ -11,6 +11,26 @@ import { Button } from "@/components/ui/button";
 type TestItem = { id: string; title: string; description?: string | null; publicCode?: string | null; publishedAt?: number | null; createdAt: number };
 type TemplateCard = { id: string; label: string; caption: string; title: string; description: string; accent: string };
 type CSSVars = CSSProperties & Record<`--${string}`, string>;
+type DraftQuestion = {
+  id: string;
+  type: "multiple" | "multi" | "truefalse" | "long";
+  text: string;
+  options?: string[];
+  correctIndex?: number | null;
+  correctIndices?: number[] | null;
+  answerText?: string | null;
+};
+type DraftTest = {
+  title: string;
+  description: string;
+  questions: DraftQuestion[];
+  model?: string;
+};
+
+const makeId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
 
 const templateCards: TemplateCard[] = [
   {
@@ -56,6 +76,19 @@ export default function TeacherTestsPage() {
   const [activeTemplate, setActiveTemplate] = useState<string>("blank");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
+  const [genTitle, setGenTitle] = useState("");
+  const [genTopic, setGenTopic] = useState("");
+  const [genDescription, setGenDescription] = useState("");
+  const [genMultipleCount, setGenMultipleCount] = useState(6);
+  const [genMultiCount, setGenMultiCount] = useState(2);
+  const [genTrueFalseCount, setGenTrueFalseCount] = useState(4);
+  const [genLongCount, setGenLongCount] = useState(2);
+  const [genOptionsCount, setGenOptionsCount] = useState(4);
+  const [genLoading, setGenLoading] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [genDraft, setGenDraft] = useState<DraftTest | null>(null);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
   const heroPaint: CSSVars = {
     "--module-accent-1": "168 76% 64%",
     "--module-accent-2": "196 72% 60%",
@@ -126,6 +159,224 @@ export default function TeacherTestsPage() {
     }
   };
 
+  const handleGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGenError(null);
+    setDraftError(null);
+    setGenDraft(null);
+    const total = genMultipleCount + genMultiCount + genTrueFalseCount + genLongCount;
+    if (total <= 0) {
+      setGenError("Укажите количество вопросов.");
+      return;
+    }
+    if (!genTopic.trim() && !genTitle.trim()) {
+      setGenError("Введите тему или название теста.");
+      return;
+    }
+    setGenLoading(true);
+    try {
+      const res = await fetch("/api/teacher/tests/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: genTitle,
+          topic: genTopic,
+          description: genDescription,
+          multipleCount: genMultipleCount,
+          multiCount: genMultiCount,
+          trueFalseCount: genTrueFalseCount,
+          longCount: genLongCount,
+          optionsCount: genOptionsCount,
+          draft: true,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok || !data?.draft) {
+        const detail = data?.error ? String(data.error) : "Не удалось сгенерировать тест.";
+        throw new Error(detail);
+      }
+      const draftQuestions: DraftQuestion[] = Array.isArray(data.draft?.questions)
+        ? data.draft.questions.map((q: DraftQuestion) => ({
+            id: makeId(),
+            type: q.type || "multiple",
+            text: q.text ?? "",
+            options: Array.isArray(q.options) ? q.options : undefined,
+            correctIndex: q.correctIndex ?? null,
+            correctIndices: Array.isArray(q.correctIndices) ? q.correctIndices : null,
+            answerText: q.answerText ?? null,
+          }))
+        : [];
+      setGenDraft({
+        title: typeof data.draft?.title === "string" ? data.draft.title : genTitle || genTopic || "Тест",
+        description: typeof data.draft?.description === "string" ? data.draft.description : genDescription || "",
+        questions: draftQuestions,
+        model: typeof data?.model === "string" ? data.model : undefined,
+      });
+    } catch (e: unknown) {
+      setGenError(e instanceof Error ? e.message : "Ошибка генерации");
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
+  const updateDraftQuestion = (id: string, updates: Partial<DraftQuestion>) => {
+    setGenDraft(prev =>
+      prev ? { ...prev, questions: prev.questions.map(q => (q.id === id ? { ...q, ...updates } : q)) } : prev
+    );
+  };
+
+  const updateDraftOption = (id: string, idx: number, value: string) => {
+    setGenDraft(prev => {
+      if (!prev) return prev;
+      const nextQuestions = prev.questions.map(q => {
+        if (q.id !== id) return q;
+        const nextOptions = Array.isArray(q.options) ? [...q.options] : [];
+        nextOptions[idx] = value;
+        return { ...q, options: nextOptions };
+      });
+      return { ...prev, questions: nextQuestions };
+    });
+  };
+
+  const addDraftOption = (id: string) => {
+    setGenDraft(prev => {
+      if (!prev) return prev;
+      const nextQuestions = prev.questions.map(q => {
+        if (q.id !== id) return q;
+        const nextOptions = Array.isArray(q.options) ? [...q.options, ""] : [""];
+        return { ...q, options: nextOptions };
+      });
+      return { ...prev, questions: nextQuestions };
+    });
+  };
+
+  const removeDraftOption = (id: string, idx: number) => {
+    setGenDraft(prev => {
+      if (!prev) return prev;
+      const nextQuestions = prev.questions.map(q => {
+        if (q.id !== id) return q;
+        const nextOptions = Array.isArray(q.options) ? [...q.options] : [];
+        nextOptions.splice(idx, 1);
+        let nextCorrect = q.correctIndex ?? null;
+        let nextCorrectIndices = Array.isArray(q.correctIndices) ? [...q.correctIndices] : [];
+        if (nextCorrect === idx) nextCorrect = null;
+        if (nextCorrect != null && idx < nextCorrect) nextCorrect = nextCorrect - 1;
+        if (nextCorrectIndices.length > 0) {
+          nextCorrectIndices = nextCorrectIndices.filter(i => i !== idx).map(i => (i > idx ? i - 1 : i));
+        }
+        return {
+          ...q,
+          options: nextOptions,
+          correctIndex: nextCorrect,
+          correctIndices: nextCorrectIndices,
+        };
+      });
+      return { ...prev, questions: nextQuestions };
+    });
+  };
+
+  const toggleDraftCorrectIndex = (id: string, idx: number) => {
+    setGenDraft(prev => {
+      if (!prev) return prev;
+      const nextQuestions = prev.questions.map(q => {
+        if (q.id !== id) return q;
+        const current = Array.isArray(q.correctIndices) ? q.correctIndices : [];
+        const next = current.includes(idx) ? current.filter(i => i !== idx) : [...current, idx];
+        return { ...q, correctIndices: next };
+      });
+      return { ...prev, questions: nextQuestions };
+    });
+  };
+
+  const setDraftType = (id: string, type: DraftQuestion["type"]) => {
+    setGenDraft(prev => {
+      if (!prev) return prev;
+      const nextQuestions = prev.questions.map(q => {
+        if (q.id !== id) return q;
+        if (type === "truefalse") {
+          return { ...q, type, options: ["Верно", "Неверно"], correctIndex: q.correctIndex ?? null, correctIndices: null };
+        }
+        if (type === "long") {
+          return { ...q, type, options: undefined, correctIndex: null, correctIndices: null };
+        }
+        if (type === "multi") {
+          const opts = Array.isArray(q.options) ? q.options : ["", ""];
+          return { ...q, type, options: opts, correctIndex: null, correctIndices: q.correctIndices ?? [] };
+        }
+        const opts = Array.isArray(q.options) ? q.options : ["", ""];
+        return { ...q, type, options: opts, correctIndex: q.correctIndex ?? null, correctIndices: null };
+      });
+      return { ...prev, questions: nextQuestions };
+    });
+  };
+
+  const removeDraftQuestion = (id: string) => {
+    setGenDraft(prev => (prev ? { ...prev, questions: prev.questions.filter(q => q.id !== id) } : prev));
+  };
+
+  const handleCreateFromDraft = async () => {
+    if (!genDraft) return;
+    setDraftError(null);
+    setDraftSaving(true);
+    try {
+      const titleValue = genDraft.title.trim();
+      if (!titleValue) throw new Error("Укажите название теста.");
+      for (const q of genDraft.questions) {
+        const text = q.text.trim();
+        if (!text) throw new Error("В черновике есть вопрос без текста.");
+        if (q.type === "long") continue;
+        const opts = (q.options ?? []).map(o => o.trim()).filter(Boolean);
+        if (opts.length < 2) throw new Error("В одном из вопросов недостаточно вариантов ответа.");
+        if (q.type === "multi") {
+          if (!Array.isArray(q.correctIndices) || q.correctIndices.length === 0) {
+            throw new Error("Для вопросов с несколькими правильными нужно отметить ответы.");
+          }
+        } else if (q.correctIndex == null) {
+          throw new Error("Для вопросов с одним правильным нужно выбрать ответ.");
+        }
+      }
+      const res = await fetch("/api/teacher/tests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: titleValue, description: genDraft.description }),
+      });
+      const j: { item: TestItem } = await res.json();
+      if (!res.ok) throw new Error("Не удалось создать тест");
+      const testId = j.item.id;
+      for (const q of genDraft.questions) {
+        const payload: Record<string, unknown> = { text: q.text };
+        if (q.type === "long") {
+          payload.options = null;
+          payload.correctIndex = null;
+          payload.correctIndices = null;
+          payload.answerText = q.answerText ?? null;
+        } else if (q.type === "truefalse") {
+          payload.options = ["Верно", "Неверно"];
+          payload.correctIndex = q.correctIndex ?? null;
+          payload.correctIndices = null;
+        } else if (q.type === "multi") {
+          payload.options = (q.options ?? []).map(o => o.trim()).filter(Boolean);
+          payload.correctIndices = Array.isArray(q.correctIndices) ? q.correctIndices : [];
+          payload.correctIndex = null;
+        } else {
+          payload.options = (q.options ?? []).map(o => o.trim()).filter(Boolean);
+          payload.correctIndex = q.correctIndex ?? null;
+          payload.correctIndices = null;
+        }
+        await fetch(`/api/teacher/tests/${testId}/questions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+      window.location.href = `/teacher/tests/${testId}/edit`;
+    } catch (e: unknown) {
+      setDraftError(e instanceof Error ? e.message : "Ошибка сохранения черновика");
+    } finally {
+      setDraftSaving(false);
+    }
+  };
+
   const filteredTests = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tests.filter(test => {
@@ -190,6 +441,231 @@ export default function TeacherTestsPage() {
               </div>
             </button>
           ))}
+        </div>
+
+        <div className="mt-5 rounded-2xl border bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Генерация через Ollama</h3>
+              <p className="text-sm text-gray-600">Авто‑тест с выбором, multi‑select, true/false и длинными ответами.</p>
+            </div>
+            <div className="rounded-full border bg-gray-900 px-3 py-1 text-xs font-semibold text-white">
+              AI
+            </div>
+          </div>
+
+          <form onSubmit={handleGenerate} className="mt-4 grid gap-4 md:max-w-3xl">
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-1">
+                <span className="text-xs uppercase tracking-wide text-gray-500">Название (опционально)</span>
+                <Input
+                  value={genTitle}
+                  onChange={e => setGenTitle(e.target.value)}
+                  placeholder="Напр. Тест по органике"
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs uppercase tracking-wide text-gray-500">Тема теста</span>
+                <Input
+                  value={genTopic}
+                  onChange={e => setGenTopic(e.target.value)}
+                  placeholder="Напр. Кислоты и основания"
+                />
+              </label>
+            </div>
+            <label className="grid gap-1">
+              <span className="text-xs uppercase tracking-wide text-gray-500">Описание</span>
+              <Textarea
+                value={genDescription}
+                onChange={e => setGenDescription(e.target.value)}
+                placeholder="Короткое описание теста"
+                className="min-h-20"
+              />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="grid gap-1">
+                <span className="text-xs uppercase tracking-wide text-gray-500">Вопросы с вариантами</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={genMultipleCount}
+                  onChange={e => setGenMultipleCount(Number(e.target.value) || 0)}
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs uppercase tracking-wide text-gray-500">Несколько правильных</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={genMultiCount}
+                  onChange={e => setGenMultiCount(Number(e.target.value) || 0)}
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs uppercase tracking-wide text-gray-500">True / False</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={genTrueFalseCount}
+                  onChange={e => setGenTrueFalseCount(Number(e.target.value) || 0)}
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs uppercase tracking-wide text-gray-500">Длинный ответ</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={genLongCount}
+                  onChange={e => setGenLongCount(Number(e.target.value) || 0)}
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs uppercase tracking-wide text-gray-500">Вариантов в вопросе</span>
+                <Input
+                  type="number"
+                  min={2}
+                  max={6}
+                  value={genOptionsCount}
+                  onChange={e => setGenOptionsCount(Number(e.target.value) || 4)}
+                />
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" disabled={genLoading}>
+                {genLoading ? "Генерируем..." : "Сгенерировать тест"}
+              </Button>
+              <span className="text-xs text-gray-500">
+                Всего вопросов: {genMultipleCount + genMultiCount + genTrueFalseCount + genLongCount}
+              </span>
+              {genError && <span className="text-xs text-red-600">{genError}</span>}
+            </div>
+          </form>
+
+          {genDraft && (
+            <div className="mt-6 rounded-2xl border bg-white/95 p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-base font-semibold text-gray-900">Черновик теста</h4>
+                  <p className="text-xs text-gray-500">
+                    Отредактируйте вопросы перед сохранением.
+                    {genDraft.model ? ` Модель: ${genDraft.model}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setGenDraft(null)} disabled={draftSaving}>
+                    Очистить
+                  </Button>
+                  <Button type="button" onClick={handleCreateFromDraft} disabled={draftSaving}>
+                    {draftSaving ? "Сохраняем..." : "Создать тест"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <label className="grid gap-1">
+                  <span className="text-xs uppercase tracking-wide text-gray-500">Название</span>
+                  <Input
+                    value={genDraft.title}
+                    onChange={e => setGenDraft(prev => (prev ? { ...prev, title: e.target.value } : prev))}
+                    placeholder="Название теста"
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-xs uppercase tracking-wide text-gray-500">Описание</span>
+                  <Input
+                    value={genDraft.description}
+                    onChange={e => setGenDraft(prev => (prev ? { ...prev, description: e.target.value } : prev))}
+                    placeholder="Короткое описание"
+                  />
+                </label>
+              </div>
+
+              {draftError && <div className="mt-3 text-sm text-red-600">{draftError}</div>}
+
+              <div className="mt-4 space-y-3">
+                {genDraft.questions.map((q, idx) => (
+                  <div key={q.id} className="rounded-xl border bg-white p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs text-gray-500">Вопрос {idx + 1}</div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="rounded-md border bg-white px-2 py-1 text-xs"
+                          value={q.type}
+                          onChange={e => setDraftType(q.id, e.target.value as DraftQuestion["type"])}
+                        >
+                          <option value="multiple">Один правильный</option>
+                          <option value="multi">Несколько правильных</option>
+                          <option value="truefalse">Верно / Неверно</option>
+                          <option value="long">Длинный ответ</option>
+                        </select>
+                        <Button type="button" variant="secondary" onClick={() => removeDraftQuestion(q.id)}>
+                          Удалить
+                        </Button>
+                      </div>
+                    </div>
+                    <Textarea
+                      value={q.text}
+                      onChange={e => updateDraftQuestion(q.id, { text: e.target.value })}
+                      className="mt-2 min-h-20"
+                      placeholder="Текст вопроса"
+                    />
+
+                    {q.type === "long" ? (
+                      <label className="mt-3 grid gap-1">
+                        <span className="text-xs uppercase tracking-wide text-gray-500">Пример ответа</span>
+                        <Textarea
+                          value={q.answerText ?? ""}
+                          onChange={e => updateDraftQuestion(q.id, { answerText: e.target.value })}
+                          placeholder="Полный ответ для ориентира"
+                        />
+                      </label>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        <div className="text-xs text-gray-500">
+                          {q.type === "multi" ? "Отметьте все правильные варианты." : "Выберите один правильный вариант."}
+                        </div>
+                        {(q.options ?? []).map((opt, optIdx) => (
+                          <div key={`${q.id}-${optIdx}`} className="flex items-center gap-2">
+                            {q.type === "multi" ? (
+                              <input
+                                type="checkbox"
+                                checked={Array.isArray(q.correctIndices) && q.correctIndices.includes(optIdx)}
+                                onChange={() => toggleDraftCorrectIndex(q.id, optIdx)}
+                              />
+                            ) : (
+                              <input
+                                type="radio"
+                                name={`draft-${q.id}`}
+                                checked={q.correctIndex === optIdx}
+                                onChange={() => updateDraftQuestion(q.id, { correctIndex: optIdx, correctIndices: [] })}
+                              />
+                            )}
+                            <Input
+                              value={opt}
+                              onChange={e => updateDraftOption(q.id, optIdx, e.target.value)}
+                              placeholder={`Вариант ${optIdx + 1}`}
+                            />
+                            <Button type="button" onClick={() => removeDraftOption(q.id, optIdx)}>
+                              Удалить
+                            </Button>
+                          </div>
+                        ))}
+                        {q.type !== "truefalse" && (
+                          <Button type="button" onClick={() => addDraftOption(q.id)}>
+                            Добавить вариант
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-5 rounded-2xl border bg-white p-5 shadow-sm">
@@ -281,6 +757,12 @@ export default function TeacherTestsPage() {
                     className="rounded-full border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                   >
                     Открыть редактор
+                  </Link>
+                  <Link
+                    href={`/teacher/tests/${test.id}/review`}
+                    className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                  >
+                    Проверить работы
                   </Link>
                   {test.publicCode && (
                     <Link

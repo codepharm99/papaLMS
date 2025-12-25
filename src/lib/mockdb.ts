@@ -67,6 +67,7 @@ export type QuestionItem = {
   id: string;
   testId: string;
   text: string;
+  answerText?: string | null;
   options?: string[] | null;
   correctIndex?: number | null;
   correctIndices?: number[] | null;
@@ -133,6 +134,31 @@ export type TeacherAnalytics = {
     name: string;
     totalAssignments: number;
     completedAssignments: number;
+  }>;
+};
+
+export type TeacherStudentAnalytics = {
+  student: { id: string; name: string };
+  summary: {
+    totalAssignments: number;
+    completedAssignments: number;
+    completionRate: number;
+    scoredAssignments: number;
+    avgScore: number;
+    bestScore: number;
+    worstScore: number;
+    lastCompletedAt?: number | null;
+  };
+  completed: Array<{
+    id: string;
+    testId: string;
+    title: string;
+    score: number | null;
+    total: number | null;
+    percent: number | null;
+    completedAt?: number | null;
+    assignedAt: number;
+    dueAt?: number | null;
   }>;
 };
 
@@ -506,7 +532,7 @@ export async function createTestForTeacher(
 export async function addQuestionToTest(
   teacher: User,
   testId: string,
-  data: { text: string; options?: string[]; correctIndex?: number | null; correctIndices?: number[] | null }
+  data: { text: string; options?: string[]; correctIndex?: number | null; correctIndices?: number[] | null; answerText?: string | null }
 ): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "TEXT_REQUIRED" | "INVALID_OPTIONS" | "PUBLISHED" }> {
   if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
   const test = await prisma.test.findUnique({ where: { id: testId } });
@@ -518,6 +544,7 @@ export async function addQuestionToTest(
   let options: string[] | null = null;
   let correctIndex: number | null = null;
   let correctIndices: number[] | null = null;
+  const answerText = typeof data.answerText === "string" ? data.answerText.trim() : null;
   if (data.options && data.options.length > 0) {
     options = data.options.map(o => String(o ?? "").trim()).filter(Boolean);
     if (options.length === 0) options = null;
@@ -539,6 +566,7 @@ export async function addQuestionToTest(
     data: {
       testId,
       text,
+      answerText: answerText || null,
       options: options ? (options as unknown as Prisma.InputJsonValue) : undefined,
       correctIndex: correctIndices ? null : correctIndex,
       correctIndices: correctIndices ? (correctIndices as unknown as Prisma.InputJsonValue) : undefined,
@@ -550,6 +578,7 @@ export async function addQuestionToTest(
       id: q.id,
       testId: q.testId,
       text: q.text,
+      answerText: q.answerText,
       options: (q.options as unknown as string[] | null) ?? null,
       correctIndex: q.correctIndex ?? null,
       correctIndices: (q.correctIndices as unknown as number[] | null) ?? null,
@@ -571,6 +600,7 @@ export async function listQuestionsForTest(
     id: q.id,
     testId: q.testId,
     text: q.text,
+    answerText: q.answerText,
     options: (q.options as unknown as string[] | null) ?? null,
     correctIndex: q.correctIndex ?? null,
     correctIndices: (q.correctIndices as unknown as number[] | null) ?? null,
@@ -591,7 +621,7 @@ export async function updateQuestionInTest(
   teacher: User,
   testId: string,
   questionId: string,
-  data: { text?: string; options?: string[] | null; correctIndex?: number | null; correctIndices?: number[] | null }
+  data: { text?: string; options?: string[] | null; correctIndex?: number | null; correctIndices?: number[] | null; answerText?: string | null }
 ): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "QUESTION_NOT_FOUND" | "INVALID_OPTIONS" | "TEXT_REQUIRED" | "PUBLISHED" }> {
   if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
   const test = await prisma.test.findUnique({ where: { id: testId } });
@@ -606,6 +636,10 @@ export async function updateQuestionInTest(
     const t = String(data.text).trim();
     if (!t) return { error: "TEXT_REQUIRED" };
     updates.text = t;
+  }
+  if (data.answerText !== undefined) {
+    const a = data.answerText == null ? null : String(data.answerText).trim();
+    updates.answerText = a ? a : null;
   }
   if (data.options !== undefined) {
     const options = data.options?.map(o => String(o ?? "").trim()).filter(Boolean) ?? null;
@@ -653,6 +687,7 @@ export async function updateQuestionInTest(
       id: uq.id,
       testId: uq.testId,
       text: uq.text,
+      answerText: uq.answerText,
       options: (uq.options as unknown as string[] | null) ?? null,
       correctIndex: uq.correctIndex ?? null,
       correctIndices: (uq.correctIndices as unknown as number[] | null) ?? null,
@@ -1048,6 +1083,129 @@ export async function listStudentStatusesForTest(
   return { ok: true, items };
 }
 
+export async function listAssignmentsForTest(
+  teacher: User,
+  testId: string
+): Promise<
+  | {
+      ok: true;
+      items: Array<{
+        id: string;
+        student: { id: string; name: string };
+        status: string;
+        score?: number | null;
+        total?: number | null;
+        completedAt?: number | null;
+        dueAt?: number | null;
+        assignedAt: number;
+      }>;
+    }
+  | { error: "FORBIDDEN" | "TEST_NOT_FOUND" }
+> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const test = await prisma.test.findUnique({ where: { id: testId } });
+  if (!test) return { error: "TEST_NOT_FOUND" };
+  if (test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  const assignments = await prisma.testAssignment.findMany({
+    where: { testId },
+    orderBy: { createdAt: "desc" },
+    include: { student: true },
+  });
+  return {
+    ok: true,
+    items: assignments.map(a => ({
+      id: a.id,
+      student: { id: a.student.id, name: a.student.name },
+      status: a.status,
+      score: a.score ?? null,
+      total: a.total ?? null,
+      completedAt: a.completedAt?.getTime() ?? null,
+      dueAt: a.dueAt?.getTime() ?? null,
+      assignedAt: a.createdAt.getTime(),
+    })),
+  };
+}
+
+export async function getAssignmentReview(
+  teacher: User,
+  assignmentId: string
+): Promise<
+  | {
+      ok: true;
+      assignment: {
+        id: string;
+        status: string;
+        score?: number | null;
+        total?: number | null;
+        completedAt?: number | null;
+        dueAt?: number | null;
+        assignedAt: number;
+      };
+      student: { id: string; name: string };
+      test: { id: string; title: string };
+      questions: Array<{
+        id: string;
+        text: string;
+        options?: string[] | null;
+        correctIndex?: number | null;
+        correctIndices?: number[] | null;
+        answerText?: string | null;
+      }>;
+      answers: Record<string, unknown> | null;
+      feedback: Record<string, string> | null;
+    }
+  | { error: "FORBIDDEN" | "ASSIGNMENT_NOT_FOUND" }
+> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const assignment = await prisma.testAssignment.findUnique({
+    where: { id: assignmentId },
+    include: { test: true, student: true },
+  });
+  if (!assignment) return { error: "ASSIGNMENT_NOT_FOUND" };
+  if (assignment.test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  const qs = await prisma.question.findMany({ where: { testId: assignment.testId }, orderBy: { createdAt: "asc" } });
+  return {
+    ok: true,
+    assignment: {
+      id: assignment.id,
+      status: assignment.status,
+      score: assignment.score ?? null,
+      total: assignment.total ?? null,
+      completedAt: assignment.completedAt?.getTime() ?? null,
+      dueAt: assignment.dueAt?.getTime() ?? null,
+      assignedAt: assignment.createdAt.getTime(),
+    },
+    student: { id: assignment.student.id, name: assignment.student.name },
+    test: { id: assignment.test.id, title: assignment.test.title },
+    questions: qs.map(q => ({
+      id: q.id,
+      text: q.text,
+      options: (q.options as unknown as string[] | null) ?? null,
+      correctIndex: q.correctIndex ?? null,
+      correctIndices: (q.correctIndices as unknown as number[] | null) ?? null,
+      answerText: q.answerText ?? null,
+    })),
+    answers: (assignment.answers as Record<string, unknown> | null) ?? null,
+    feedback: (assignment.feedback as Record<string, string> | null) ?? null,
+  };
+}
+
+export async function updateAssignmentFeedback(
+  teacher: User,
+  assignmentId: string,
+  feedback: Record<string, string>
+): Promise<{ ok: true } | { error: "FORBIDDEN" | "ASSIGNMENT_NOT_FOUND" }> {
+  if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
+  const assignment = await prisma.testAssignment.findUnique({ where: { id: assignmentId }, include: { test: true } });
+  if (!assignment) return { error: "ASSIGNMENT_NOT_FOUND" };
+  if (assignment.test.teacherId !== teacher.id) return { error: "FORBIDDEN" };
+  await prisma.testAssignment.update({
+    where: { id: assignmentId },
+    data: { feedback: feedback as unknown as Prisma.InputJsonValue, reviewedAt: new Date() },
+  });
+  return { ok: true };
+}
+
 export async function listGuestAttemptsForTest(
   teacher: User,
   testId: string
@@ -1193,6 +1351,81 @@ export async function getTeacherAnalytics(teacherId: string): Promise<TeacherAna
   };
 }
 
+export async function getTeacherStudentAnalytics(
+  teacherId: string,
+  studentId: string
+): Promise<{ ok: true; data: TeacherStudentAnalytics } | { error: "FORBIDDEN" | "STUDENT_NOT_FOUND" }> {
+  const student = await prisma.user.findUnique({ where: { id: studentId } });
+  if (!student || student.role !== "STUDENT") return { error: "STUDENT_NOT_FOUND" };
+
+  const assignments = await prisma.testAssignment.findMany({
+    where: { studentId, test: { teacherId } },
+    orderBy: { createdAt: "desc" },
+    include: { test: { select: { id: true, title: true } } },
+  });
+
+  const completed = assignments.filter(a => a.status === "COMPLETED");
+  let scoreSum = 0;
+  let totalSum = 0;
+  let bestScore = 0;
+  let worstScore = 0;
+  let scoredAssignments = 0;
+
+  const completedView = completed.map(a => {
+    const score = typeof a.score === "number" ? a.score : null;
+    const total = typeof a.total === "number" ? a.total : null;
+    const percent = total && total > 0 && score != null ? score / total : null;
+    if (percent != null) {
+      scoreSum += score ?? 0;
+      totalSum += total ?? 0;
+      bestScore = Math.max(bestScore, percent);
+      worstScore = worstScore === 0 ? percent : Math.min(worstScore, percent);
+      scoredAssignments += 1;
+    }
+    return {
+      id: a.id,
+      testId: a.test.id,
+      title: a.test.title,
+      score,
+      total,
+      percent,
+      completedAt: a.completedAt?.getTime() ?? null,
+      assignedAt: a.createdAt.getTime(),
+      dueAt: a.dueAt?.getTime() ?? null,
+    };
+  }).sort((a, b) => {
+    const aTime = a.completedAt ?? a.assignedAt;
+    const bTime = b.completedAt ?? b.assignedAt;
+    return bTime - aTime;
+  });
+
+  const totalAssignments = assignments.length;
+  const completedAssignments = completed.length;
+  const completionRate = totalAssignments > 0 ? completedAssignments / totalAssignments : 0;
+  const avgScore = totalSum > 0 ? scoreSum / totalSum : 0;
+  const lastCompletedAt = completed
+    .map(a => a.completedAt?.getTime() ?? a.createdAt.getTime())
+    .sort((a, b) => b - a)[0] ?? null;
+
+  return {
+    ok: true,
+    data: {
+      student: { id: student.id, name: student.name },
+      summary: {
+        totalAssignments,
+        completedAssignments,
+        completionRate,
+        scoredAssignments,
+        avgScore,
+        bestScore,
+        worstScore,
+        lastCompletedAt,
+      },
+      completed: completedView,
+    },
+  };
+}
+
 export type StudentAssignment = {
   id: string;
   test: { id: string; title: string };
@@ -1213,7 +1446,13 @@ export async function getAssignmentQuestionsForStudent(
   student: User,
   assignmentId: string
 ): Promise<
-  { ok: true; assignment: StudentAssignment; questions: Array<{ id: string; text: string; options?: string[] | null; multiSelect?: boolean }> }
+  {
+    ok: true;
+    assignment: StudentAssignment;
+    questions: Array<{ id: string; text: string; options?: string[] | null; multiSelect?: boolean }>;
+    answers?: Record<string, unknown> | null;
+    feedback?: Record<string, string> | null;
+  }
   | { error: "FORBIDDEN" | "ASSIGNMENT_NOT_FOUND" }
 > {
   if (student.role !== "STUDENT") return { error: "FORBIDDEN" };
@@ -1230,7 +1469,13 @@ export async function getAssignmentQuestionsForStudent(
     };
   });
   const assignment: StudentAssignment = { id: a.id, test: { id: a.test.id, title: a.test.title }, dueAt: a.dueAt?.getTime() ?? null, status: a.status };
-  return { ok: true, assignment, questions };
+  return {
+    ok: true,
+    assignment,
+    questions,
+    answers: (a.answers as Record<string, unknown> | null) ?? null,
+    feedback: (a.feedback as Record<string, string> | null) ?? null,
+  };
 }
 
 export async function submitAssignmentAnswers(
@@ -1245,6 +1490,7 @@ export async function submitAssignmentAnswers(
   const qs = await prisma.question.findMany({ where: { testId: a.testId } });
   let score = 0;
   let total = 0;
+  const storedAnswers: Record<string, unknown> = {};
   const normalizeSelection = (value: unknown) => {
     const numbers = Array.isArray(value)
       ? value.map(v => Number(v)).filter(v => Number.isInteger(v))
@@ -1261,15 +1507,22 @@ export async function submitAssignmentAnswers(
       const chosen = answers[q.id];
       const selection = normalizeSelection(chosen);
       const expected = Array.from(new Set(indices));
+      storedAnswers[q.id] = selection;
       if (selection.length === expected.length && selection.every(i => expected.includes(i))) score += 1;
     } else if (opts && typeof q.correctIndex === "number") {
       total += 1;
       const chosen = answers[q.id];
       const selection = normalizeSelection(chosen);
+      storedAnswers[q.id] = Array.isArray(chosen) ? selection : (chosen ?? null);
       if (selection.length === 1 && selection[0] === q.correctIndex) score += 1;
+    } else {
+      const text = answers[q.id];
+      storedAnswers[q.id] = typeof text === "string" && text.trim() ? text.trim() : null;
     }
   }
-  // Persist only status; storing detailed answers would require schema changes.
-  await prisma.testAssignment.update({ where: { id: assignmentId }, data: { status: "COMPLETED" } });
+  await prisma.testAssignment.update({
+    where: { id: assignmentId },
+    data: { status: "COMPLETED", score, total, completedAt: new Date(), answers: storedAnswers },
+  });
   return { ok: true, score, total };
 }

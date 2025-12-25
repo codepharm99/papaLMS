@@ -85,7 +85,7 @@
   --ui-border: rgba(17, 17, 17, 0.2);
   --ui-muted: rgba(17, 17, 17, 0.65);
   --ui-soft-blue: rgba(37, 99, 235, 0.08);
-  --ui-soft-green: rgba(22, 163, 74, 0.08);
+  --ui-soft-green: rgba(22, 163, 74, 0.32);
 }
 
 .dark {

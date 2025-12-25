@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Role } from "@prisma/client";
 import { currentUser } from "@/lib/auth";
-import { getOllamaConfig } from "@/lib/ollama";
+import { extractOllamaContent, getOllamaConfig } from "@/lib/ollama";
 import { prisma } from "@/lib/prisma";
 import { addQuestionToTest, createTestForTeacher, setWeeklyScoreForTeacher } from "@/lib/mockdb";
 
@@ -147,9 +147,9 @@ function parseJsonPlan(raw: string): Plan | null {
 }
 
 async function callModel(message: string): Promise<PlanResult> {
-  const { baseUrl } = getOllamaConfig();
+  const { baseUrl, timeoutMs } = getOllamaConfig();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 45_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${baseUrl}/api/chat`, {
       method: "POST",
@@ -166,9 +166,10 @@ async function callModel(message: string): Promise<PlanResult> {
       signal: controller.signal,
     });
     clearTimeout(timeout);
-    const text = await res.text();
-    const plan = parseJsonPlan(text);
-    return { plan, raw: text };
+    const raw = await res.text();
+    const content = extractOllamaContent(raw);
+    const plan = parseJsonPlan(content);
+    return { plan, raw: content };
   } catch {
     clearTimeout(timeout);
     return { plan: null };
