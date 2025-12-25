@@ -130,9 +130,10 @@ model Question {
   testId       String
   test         Test     @relation(fields: [testId], references: [id])
   text         String
-  // Для простоты: варианты и индекс правильного ответа
+  // Для простоты: варианты и правильные ответы
   options      Json?
   correctIndex Int?
+  correctIndices Json?
   createdAt    DateTime @default(now())
 }
 

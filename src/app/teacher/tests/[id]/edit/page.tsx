@@ -15,10 +15,10 @@ type TestItem = {
   publishedAt?: number | null;
   createdAt: number;
 };
-type QuestionItem = { id: string; testId: string; text: string; options?: string[]; correctIndex?: number; createdAt: number };
+type QuestionItem = { id: string; testId: string; text: string; options?: string[]; correctIndex?: number; correctIndices?: number[] | null; createdAt: number };
 type StudentItem = { id: string; name: string };
 type StudentStatus = { id: string; name: string; status: "ASSIGNED" | "IN_PROGRESS" | "COMPLETED"; timestamp: number };
-type QuestionPayload = { text: string; options?: string[]; correctIndex?: number | null };
+type QuestionPayload = { text: string; options?: string[]; correctIndex?: number | null; correctIndices?: number[] | null };
 type GuestAttempt = { id: string; name: string; score: number; total: number; createdAt: number };
 
 export default function EditTestPage() {
@@ -38,12 +38,25 @@ export default function EditTestPage() {
   const [publishError, setPublishError] = useState<string | null>(null);
 
   const [text, setText] = useState("");
+  const [questionType, setQuestionType] = useState<"multiple" | "multi" | "truefalse" | "long">("multiple");
   const [options, setOptions] = useState<string[]>([""]);
   const [correct, setCorrect] = useState<number | null>(null);
+  const [correctIndices, setCorrectIndices] = useState<number[]>([]);
 
   const [assignStudentId, setAssignStudentId] = useState("");
   const [assignDueAt, setAssignDueAt] = useState("");
+  const [assignDuration, setAssignDuration] = useState("");
   const [assignMsg, setAssignMsg] = useState<string | null>(null);
+
+  const formatDateTimeLocal = (date: Date) => {
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
 
   // --- Загрузка теста и вопросов ---
   useEffect(() => {
@@ -128,14 +141,50 @@ export default function EditTestPage() {
     setOptions(prev => prev.filter((_, i) => i !== idx));
     if (correct === idx) setCorrect(null);
     if (correct !== null && idx < correct) setCorrect(correct - 1);
+    setCorrectIndices(prev => prev.filter(i => i !== idx).map(i => (i > idx ? i - 1 : i)));
+  };
+
+  const toggleCorrectIndex = (idx: number) => {
+    setCorrectIndices(prev => (prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]));
+  };
+
+  const setType = (next: "multiple" | "multi" | "truefalse" | "long") => {
+    setQuestionType(next);
+    if (next === "multiple") {
+      setOptions([""]);
+      setCorrect(null);
+      setCorrectIndices([]);
+    }
+    if (next === "multi") {
+      setOptions(["", ""]);
+      setCorrect(null);
+      setCorrectIndices([]);
+    }
+    if (next === "truefalse") {
+      setOptions(["Верно", "Неверно"]);
+      setCorrect(null);
+      setCorrectIndices([]);
+    }
+    if (next === "long") {
+      setOptions([]);
+      setCorrect(null);
+      setCorrectIndices([]);
+    }
   };
 
   const canSubmit = useMemo(() => {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
+    if (questionType === "long") return true;
     const filled = options.map(o => o.trim()).filter(Boolean);
-    if (filled.length === 0) return text.trim().length > 0;
+    const hasEmpty = options.some(o => !o.trim());
+    if (questionType === "truefalse") return correct !== null;
+    if (filled.length < 2) return false;
+    if (hasEmpty) return false;
+    if (questionType === "multi") return correctIndices.length > 0;
     if (correct == null) return false;
-    return text.trim().length > 0 && correct >= 0 && correct < filled.length;
-  }, [text, options, correct]);
+    return correct >= 0 && correct < filled.length;
+  }, [text, options, correct, correctIndices, questionType]);
 
   const isPublished = !!test?.publishedAt;
   const shareLink = useMemo(() => {
@@ -164,11 +213,25 @@ export default function EditTestPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isPublished) return;
+    const trimmedText = text.trim();
     const filled = options.map(o => o.trim()).filter(Boolean);
-    const body: QuestionPayload = { text };
-    if (filled.length) {
+    const body: QuestionPayload = { text: trimmedText };
+    if (questionType === "long") {
+      body.options = undefined;
+      body.correctIndex = null;
+      body.correctIndices = null;
+    } else if (questionType === "truefalse") {
+      body.options = ["Верно", "Неверно"];
+      body.correctIndex = correct ?? null;
+      body.correctIndices = null;
+    } else if (questionType === "multi") {
+      body.options = filled;
+      body.correctIndices = Array.from(new Set(correctIndices));
+      body.correctIndex = null;
+    } else if (filled.length) {
       body.options = filled;
       body.correctIndex = correct ?? null;
+      body.correctIndices = null;
     }
     try {
       const res = await fetch(`/api/teacher/tests/${testId}/questions`, {
@@ -177,7 +240,11 @@ export default function EditTestPage() {
         body: JSON.stringify(body),
       });
       const j = await res.json();
-      if (res.ok) { setQuestions(prev => [...prev, j.item]); setText(""); setOptions([""]); setCorrect(null); }
+      if (res.ok) {
+        setQuestions(prev => [...prev, j.item]);
+        setText("");
+        setType("multiple");
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -231,16 +298,76 @@ export default function EditTestPage() {
             {isPublished ? (
               <div className="text-sm text-gray-600">Тест опубликован. Вопросы больше редактировать нельзя.</div>
             ) : (
-              <form onSubmit={handleAdd} className="grid gap-2">
+              <form onSubmit={handleAdd} className="grid gap-3">
+                <label className="grid gap-1">
+                  <span className="text-xs uppercase tracking-wide text-gray-500">Тип вопроса</span>
+                  <select
+                    className="rounded-md border px-3 py-2 text-sm"
+                    value={questionType}
+                    onChange={(e) => setType(e.target.value as "multiple" | "multi" | "truefalse" | "long")}
+                  >
+                    <option value="multiple">Несколько вариантов</option>
+                    <option value="multi">Несколько правильных</option>
+                    <option value="truefalse">Верно / Неверно</option>
+                    <option value="long">Длинный ответ</option>
+                  </select>
+                </label>
                 <Textarea value={text} onChange={e => setText(e.target.value)} placeholder="Введите вопрос" required />
-                {options.map((opt, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <input type="radio" checked={correct===i} onChange={()=>setCorrect(i)} title="Правильный ответ" />
-                    <Input value={opt} onChange={e=>setOptions(prev=>prev.map((v,j)=>j===i?e.target.value:v))} placeholder={`Вариант ${i+1}`} />
-                    <Button type="button" onClick={()=>removeOption(i)}>Удалить</Button>
+
+                {questionType === "multiple" && (
+                  <div className="grid gap-2">
+                    <div className="text-xs text-gray-500">Выберите один правильный вариант.</div>
+                    {options.map((opt, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input type="radio" checked={correct === i} onChange={() => setCorrect(i)} title="Правильный ответ" />
+                        <Input
+                          value={opt}
+                          onChange={e => setOptions(prev => prev.map((v, j) => (j === i ? e.target.value : v)))}
+                          placeholder={`Вариант ${i + 1}`}
+                        />
+                        <Button type="button" onClick={() => removeOption(i)}>Удалить</Button>
+                      </div>
+                    ))}
+                    <Button type="button" onClick={addOption}>Добавить вариант</Button>
                   </div>
-                ))}
-                <Button type="button" onClick={addOption}>Добавить вариант</Button>
+                )}
+
+                {questionType === "multi" && (
+                  <div className="grid gap-2">
+                    <div className="text-xs text-gray-500">Отметьте все правильные варианты.</div>
+                    {options.map((opt, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input type="checkbox" checked={correctIndices.includes(i)} onChange={() => toggleCorrectIndex(i)} />
+                        <Input
+                          value={opt}
+                          onChange={e => setOptions(prev => prev.map((v, j) => (j === i ? e.target.value : v)))}
+                          placeholder={`Вариант ${i + 1}`}
+                        />
+                        <Button type="button" onClick={() => removeOption(i)}>Удалить</Button>
+                      </div>
+                    ))}
+                    <Button type="button" onClick={addOption}>Добавить вариант</Button>
+                  </div>
+                )}
+
+                {questionType === "truefalse" && (
+                  <div className="grid gap-2">
+                    <div className="text-xs text-gray-500">Выберите один правильный вариант.</div>
+                    {["Верно", "Неверно"].map((label, i) => (
+                      <label key={label} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input type="radio" checked={correct === i} onChange={() => setCorrect(i)} />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {questionType === "long" && (
+                  <div className="rounded-md border bg-gray-50 p-3 text-sm text-gray-600">
+                    Студент даст развернутый ответ в текстовом поле.
+                  </div>
+                )}
+
                 <Button type="submit" disabled={!canSubmit}>Сохранить вопрос</Button>
               </form>
             )}
@@ -252,10 +379,15 @@ export default function EditTestPage() {
             <form onSubmit={async e=>{
               e.preventDefault();
               try {
+                const durationMinutes = Number(assignDuration);
+                const dueAtValue =
+                  Number.isFinite(durationMinutes) && durationMinutes > 0
+                    ? formatDateTimeLocal(new Date(Date.now() + durationMinutes * 60000))
+                    : assignDueAt || null;
                 const res = await fetch("/api/teacher/assignments", {
                   method:"POST",
                   headers:{"Content-Type":"application/json"}, 
-                  body: JSON.stringify({ testId, studentId: assignStudentId, dueAt: assignDueAt||null })
+                  body: JSON.stringify({ testId, studentId: assignStudentId, dueAt: dueAtValue })
                 });
                 setAssignMsg(res.ok ? "Назначение создано" : "Ошибка при назначении");
               } catch (err) { console.error(err); }
@@ -263,7 +395,36 @@ export default function EditTestPage() {
               <select value={assignStudentId} onChange={e=>setAssignStudentId(e.target.value)}>
                 {students.map(s=> <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              <Input type="datetime-local" value={assignDueAt} onChange={e=>setAssignDueAt(e.target.value)} />
+              <label className="grid gap-1">
+                <span className="text-xs text-gray-600">Время на выполнение (в минутах)</span>
+                <Input
+                  type="number"
+                  min={1}
+                  value={assignDuration}
+                  onChange={e => {
+                    const next = e.target.value;
+                    setAssignDuration(next);
+                    const minutes = Number(next);
+                    if (Number.isFinite(minutes) && minutes > 0) {
+                      setAssignDueAt(formatDateTimeLocal(new Date(Date.now() + minutes * 60000)));
+                    }
+                  }}
+                  placeholder="Напр. 45"
+                />
+              </label>
+              <Input
+                type="datetime-local"
+                value={assignDueAt}
+                onChange={e => {
+                  setAssignDueAt(e.target.value);
+                  if (assignDuration) setAssignDuration("");
+                }}
+              />
+              {assignDuration && (
+                <div className="text-xs text-gray-500">
+                  Дедлайн рассчитан автоматически на основе времени выполнения.
+                </div>
+              )}
               <Button type="submit">Назначить</Button>
               {assignMsg && <span className="text-sm text-gray-600">{assignMsg}</span>}
             </form>

@@ -11,8 +11,11 @@ export async function POST(req: Request, ctx: Params) {
   const text = String(body.text ?? "");
   const options = Array.isArray(body.options) ? body.options.map((v: unknown) => String(v ?? "")) : undefined;
   const correctIndex = body.correctIndex == null ? null : Number(body.correctIndex);
+  const correctIndices = Array.isArray(body.correctIndices)
+    ? body.correctIndices.map((v: unknown) => Number(v)).filter((v: number) => Number.isInteger(v))
+    : undefined;
   const { id } = await ctx.params;
-  const res = await addQuestionToTest(me, id, { text, options, correctIndex });
+  const res = await addQuestionToTest(me, id, { text, options, correctIndex, correctIndices });
   if ("error" in res) {
     const statusMap: Record<string, number> = {
       FORBIDDEN: 403,

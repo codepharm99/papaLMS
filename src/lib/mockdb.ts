@@ -69,6 +69,7 @@ export type QuestionItem = {
   text: string;
   options?: string[] | null;
   correctIndex?: number | null;
+  correctIndices?: number[] | null;
   createdAt: number;
 };
 
@@ -505,7 +506,7 @@ export async function createTestForTeacher(
 export async function addQuestionToTest(
   teacher: User,
   testId: string,
-  data: { text: string; options?: string[]; correctIndex?: number | null }
+  data: { text: string; options?: string[]; correctIndex?: number | null; correctIndices?: number[] | null }
 ): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "TEXT_REQUIRED" | "INVALID_OPTIONS" | "PUBLISHED" }> {
   if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
   const test = await prisma.test.findUnique({ where: { id: testId } });
@@ -516,16 +517,32 @@ export async function addQuestionToTest(
   if (!text) return { error: "TEXT_REQUIRED" };
   let options: string[] | null = null;
   let correctIndex: number | null = null;
+  let correctIndices: number[] | null = null;
   if (data.options && data.options.length > 0) {
     options = data.options.map(o => String(o ?? "").trim()).filter(Boolean);
     if (options.length === 0) options = null;
-    if (options && data.correctIndex != null) {
-      if (data.correctIndex < 0 || data.correctIndex >= options.length) return { error: "INVALID_OPTIONS" };
-      correctIndex = data.correctIndex;
+    if (options) {
+      const indices = Array.isArray(data.correctIndices)
+        ? Array.from(new Set(data.correctIndices.map(n => Number(n)).filter(n => Number.isInteger(n))))
+        : [];
+      if (indices.length > 0) {
+        if (indices.some(i => i < 0 || i >= options.length)) return { error: "INVALID_OPTIONS" };
+        correctIndices = indices;
+      } else {
+        if (data.correctIndex == null) return { error: "INVALID_OPTIONS" };
+        if (data.correctIndex < 0 || data.correctIndex >= options.length) return { error: "INVALID_OPTIONS" };
+        correctIndex = data.correctIndex;
+      }
     }
   }
   const q = await prisma.question.create({
-    data: { testId, text, options: options ? (options as unknown as Prisma.InputJsonValue) : undefined, correctIndex },
+    data: {
+      testId,
+      text,
+      options: options ? (options as unknown as Prisma.InputJsonValue) : undefined,
+      correctIndex: correctIndices ? null : correctIndex,
+      correctIndices: correctIndices ? (correctIndices as unknown as Prisma.InputJsonValue) : undefined,
+    },
   });
   return {
     ok: true,
@@ -535,6 +552,7 @@ export async function addQuestionToTest(
       text: q.text,
       options: (q.options as unknown as string[] | null) ?? null,
       correctIndex: q.correctIndex ?? null,
+      correctIndices: (q.correctIndices as unknown as number[] | null) ?? null,
       createdAt: q.createdAt.getTime(),
     },
   };
@@ -555,6 +573,7 @@ export async function listQuestionsForTest(
     text: q.text,
     options: (q.options as unknown as string[] | null) ?? null,
     correctIndex: q.correctIndex ?? null,
+    correctIndices: (q.correctIndices as unknown as number[] | null) ?? null,
     createdAt: q.createdAt.getTime(),
   }));
   const testItem: TestItem = {
@@ -572,7 +591,7 @@ export async function updateQuestionInTest(
   teacher: User,
   testId: string,
   questionId: string,
-  data: { text?: string; options?: string[] | null; correctIndex?: number | null }
+  data: { text?: string; options?: string[] | null; correctIndex?: number | null; correctIndices?: number[] | null }
 ): Promise<{ ok: true; item: QuestionItem } | { error: "FORBIDDEN" | "TEST_NOT_FOUND" | "QUESTION_NOT_FOUND" | "INVALID_OPTIONS" | "TEXT_REQUIRED" | "PUBLISHED" }> {
   if (teacher.role !== "TEACHER") return { error: "FORBIDDEN" };
   const test = await prisma.test.findUnique({ where: { id: testId } });
@@ -590,19 +609,41 @@ export async function updateQuestionInTest(
   }
   if (data.options !== undefined) {
     const options = data.options?.map(o => String(o ?? "").trim()).filter(Boolean) ?? null;
-    if (options && data.correctIndex != null) {
-      if (data.correctIndex < 0 || data.correctIndex >= options.length) return { error: "INVALID_OPTIONS" };
-      updates.correctIndex = data.correctIndex;
-    } else if (data.correctIndex === null) {
+    if (options) {
+      const indices = Array.isArray(data.correctIndices)
+        ? Array.from(new Set(data.correctIndices.map(n => Number(n)).filter(n => Number.isInteger(n))))
+        : [];
+      if (indices.length > 0) {
+        if (indices.some(i => i < 0 || i >= options.length)) return { error: "INVALID_OPTIONS" };
+        updates.correctIndices = indices as unknown as Prisma.InputJsonValue;
+        updates.correctIndex = null;
+      } else {
+        if (data.correctIndex == null) return { error: "INVALID_OPTIONS" };
+        if (data.correctIndex < 0 || data.correctIndex >= options.length) return { error: "INVALID_OPTIONS" };
+        updates.correctIndex = data.correctIndex;
+        updates.correctIndices = Prisma.DbNull;
+      }
+    } else {
       updates.correctIndex = null;
+      updates.correctIndices = Prisma.DbNull;
     }
     updates.options = options ? (options as unknown as Prisma.InputJsonValue) : Prisma.DbNull;
+  } else if (data.correctIndices != null) {
+    const opts = (q.options as unknown as string[] | null) ?? null;
+    if (!opts) return { error: "INVALID_OPTIONS" };
+    const indices = Array.isArray(data.correctIndices)
+      ? Array.from(new Set(data.correctIndices.map(n => Number(n)).filter(n => Number.isInteger(n))))
+      : [];
+    if (indices.length === 0) return { error: "INVALID_OPTIONS" };
+    if (indices.some(i => i < 0 || i >= opts.length)) return { error: "INVALID_OPTIONS" };
+    updates.correctIndices = indices as unknown as Prisma.InputJsonValue;
+    updates.correctIndex = null;
   } else if (data.correctIndex != null) {
-    // Only change correct index when options exist on the question
     const opts = (q.options as unknown as string[] | null) ?? null;
     if (!opts) return { error: "INVALID_OPTIONS" };
     if (data.correctIndex < 0 || data.correctIndex >= opts.length) return { error: "INVALID_OPTIONS" };
     updates.correctIndex = data.correctIndex;
+    updates.correctIndices = Prisma.DbNull;
   }
 
   const uq = await prisma.question.update({ where: { id: questionId }, data: updates });
@@ -614,6 +655,7 @@ export async function updateQuestionInTest(
       text: uq.text,
       options: (uq.options as unknown as string[] | null) ?? null,
       correctIndex: uq.correctIndex ?? null,
+      correctIndices: (uq.correctIndices as unknown as number[] | null) ?? null,
       createdAt: uq.createdAt.getTime(),
     },
   };
@@ -675,7 +717,7 @@ export async function getPublishedTestByCode(
   | {
       ok: true;
       test: { id: string; title: string; description?: string | null };
-      questions: Array<{ id: string; text: string; options?: string[] | null }>;
+      questions: Array<{ id: string; text: string; options?: string[] | null; multiSelect?: boolean }>;
     }
   | { error: "NOT_FOUND" }
 > {
@@ -684,14 +726,22 @@ export async function getPublishedTestByCode(
   });
   if (!test) return { error: "NOT_FOUND" };
   const qs = await prisma.question.findMany({ where: { testId: test.id }, orderBy: { createdAt: "asc" } });
-  const questions = qs.map(q => ({ id: q.id, text: q.text, options: (q.options as unknown as string[] | null) ?? null }));
+  const questions = qs.map(q => {
+    const indices = (q.correctIndices as unknown as number[] | null) ?? null;
+    return {
+      id: q.id,
+      text: q.text,
+      options: (q.options as unknown as string[] | null) ?? null,
+      multiSelect: Array.isArray(indices) && indices.length > 0,
+    };
+  });
   return { ok: true, test: { id: test.id, title: test.title, description: test.description }, questions };
 }
 
 export async function submitGuestAttempt(
   code: string,
   name: string,
-  answers: Record<string, number | string | null>
+  answers: Record<string, number | number[] | string | null>
 ): Promise<{ ok: true; score: number; total: number } | { error: "NOT_FOUND" | "NAME_REQUIRED" }> {
   const testRow = await prisma.test.findFirst({
     where: { publicCode: code, publishedAt: { not: null } },
@@ -704,13 +754,30 @@ export async function submitGuestAttempt(
   let score = 0;
   let total = 0;
   const storedAnswers: Record<string, unknown> = {};
+  const normalizeSelection = (value: unknown) => {
+    const numbers = Array.isArray(value)
+      ? value.map(v => Number(v)).filter(v => Number.isInteger(v))
+      : typeof value === "number"
+        ? [value]
+        : [];
+    return Array.from(new Set(numbers));
+  };
   for (const q of qs) {
     const opts = (q.options as unknown as string[] | null) ?? null;
-    if (opts && typeof q.correctIndex === "number") {
+    const indices = (q.correctIndices as unknown as number[] | null) ?? null;
+    if (opts && Array.isArray(indices) && indices.length > 0) {
       total += 1;
       const choice = answers[q.id];
-      storedAnswers[q.id] = choice ?? null;
-      if (typeof choice === "number" && choice === q.correctIndex) score += 1;
+      const selection = normalizeSelection(choice);
+      const expected = Array.from(new Set(indices));
+      storedAnswers[q.id] = selection;
+      if (selection.length === expected.length && selection.every(i => expected.includes(i))) score += 1;
+    } else if (opts && typeof q.correctIndex === "number") {
+      total += 1;
+      const choice = answers[q.id];
+      const selection = normalizeSelection(choice);
+      storedAnswers[q.id] = Array.isArray(choice) ? selection : (choice ?? null);
+      if (selection.length === 1 && selection[0] === q.correctIndex) score += 1;
     }
   }
 
@@ -1145,12 +1212,23 @@ export async function listAssignmentsForStudent(studentId: string): Promise<Stud
 export async function getAssignmentQuestionsForStudent(
   student: User,
   assignmentId: string
-): Promise<{ ok: true; assignment: StudentAssignment; questions: Array<{ id: string; text: string; options?: string[] | null }> } | { error: "FORBIDDEN" | "ASSIGNMENT_NOT_FOUND" }> {
+): Promise<
+  { ok: true; assignment: StudentAssignment; questions: Array<{ id: string; text: string; options?: string[] | null; multiSelect?: boolean }> }
+  | { error: "FORBIDDEN" | "ASSIGNMENT_NOT_FOUND" }
+> {
   if (student.role !== "STUDENT") return { error: "FORBIDDEN" };
   const a = await prisma.testAssignment.findUnique({ where: { id: assignmentId }, include: { test: true } });
   if (!a || a.studentId !== student.id) return { error: "ASSIGNMENT_NOT_FOUND" };
   const qs = await prisma.question.findMany({ where: { testId: a.testId }, orderBy: { createdAt: "asc" } });
-  const questions = qs.map(q => ({ id: q.id, text: q.text, options: (q.options as unknown as string[] | null) ?? null }));
+  const questions = qs.map(q => {
+    const indices = (q.correctIndices as unknown as number[] | null) ?? null;
+    return {
+      id: q.id,
+      text: q.text,
+      options: (q.options as unknown as string[] | null) ?? null,
+      multiSelect: Array.isArray(indices) && indices.length > 0,
+    };
+  });
   const assignment: StudentAssignment = { id: a.id, test: { id: a.test.id, title: a.test.title }, dueAt: a.dueAt?.getTime() ?? null, status: a.status };
   return { ok: true, assignment, questions };
 }
@@ -1158,7 +1236,7 @@ export async function getAssignmentQuestionsForStudent(
 export async function submitAssignmentAnswers(
   student: User,
   assignmentId: string,
-  answers: Record<string, number | string | null>
+  answers: Record<string, number | number[] | string | null>
 ): Promise<{ ok: true; score: number; total: number } | { error: "FORBIDDEN" | "ASSIGNMENT_NOT_FOUND" | "ALREADY_SUBMITTED" }> {
   if (student.role !== "STUDENT") return { error: "FORBIDDEN" };
   const a = await prisma.testAssignment.findUnique({ where: { id: assignmentId } });
@@ -1167,12 +1245,28 @@ export async function submitAssignmentAnswers(
   const qs = await prisma.question.findMany({ where: { testId: a.testId } });
   let score = 0;
   let total = 0;
+  const normalizeSelection = (value: unknown) => {
+    const numbers = Array.isArray(value)
+      ? value.map(v => Number(v)).filter(v => Number.isInteger(v))
+      : typeof value === "number"
+        ? [value]
+        : [];
+    return Array.from(new Set(numbers));
+  };
   for (const q of qs) {
     const opts = (q.options as unknown as string[] | null) ?? null;
-    if (opts && typeof q.correctIndex === "number") {
+    const indices = (q.correctIndices as unknown as number[] | null) ?? null;
+    if (opts && Array.isArray(indices) && indices.length > 0) {
       total += 1;
       const chosen = answers[q.id];
-      if (typeof chosen === "number" && chosen === q.correctIndex) score += 1;
+      const selection = normalizeSelection(chosen);
+      const expected = Array.from(new Set(indices));
+      if (selection.length === expected.length && selection.every(i => expected.includes(i))) score += 1;
+    } else if (opts && typeof q.correctIndex === "number") {
+      total += 1;
+      const chosen = answers[q.id];
+      const selection = normalizeSelection(chosen);
+      if (selection.length === 1 && selection[0] === q.correctIndex) score += 1;
     }
   }
   // Persist only status; storing detailed answers would require schema changes.

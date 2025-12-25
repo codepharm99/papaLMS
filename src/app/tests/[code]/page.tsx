@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 type PublicTest = { id: string; title: string; description?: string | null };
-type PublicQuestion = { id: string; text: string; options?: string[] | null };
+type PublicQuestion = { id: string; text: string; options?: string[] | null; multiSelect?: boolean };
 
 export default function PublicTestPage() {
   const params = useParams<{ code: string }>();
@@ -18,7 +18,7 @@ export default function PublicTestPage() {
   const [test, setTest] = useState<PublicTest | null>(null);
   const [questions, setQuestions] = useState<PublicQuestion[]>([]);
   const [name, setName] = useState("");
-  const [answers, setAnswers] = useState<Record<string, number | string | null>>({});
+  const [answers, setAnswers] = useState<Record<string, number | number[] | string | null>>({});
   const [result, setResult] = useState<{ score: number; total: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -77,6 +77,16 @@ export default function PublicTestPage() {
   if (error) return <div className="p-6 text-red-600">Ошибка: {error}</div>;
   if (!test) return <div className="p-6">Тест не найден</div>;
 
+  const toggleMultiAnswer = (questionId: string, optionIndex: number) => {
+    setAnswers(prev => {
+      const current = Array.isArray(prev[questionId]) ? (prev[questionId] as number[]) : [];
+      const next = current.includes(optionIndex)
+        ? current.filter(i => i !== optionIndex)
+        : [...current, optionIndex];
+      return { ...prev, [questionId]: next };
+    });
+  };
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">
       <header className="rounded-xl border bg-white p-4">
@@ -99,11 +109,19 @@ export default function PublicTestPage() {
                   {q.options.map((opt, idx) => (
                     <label key={idx} className="flex gap-2 text-sm">
                       <input
-                        type="radio"
+                        type={q.multiSelect ? "checkbox" : "radio"}
                         name={`q-${q.id}`}
                         value={idx}
-                        checked={answers[q.id] === idx}
-                        onChange={() => setAnswers(prev => ({ ...prev, [q.id]: idx }))}
+                        checked={
+                          q.multiSelect
+                            ? Array.isArray(answers[q.id]) && (answers[q.id] as number[]).includes(idx)
+                            : answers[q.id] === idx
+                        }
+                        onChange={() =>
+                          q.multiSelect
+                            ? toggleMultiAnswer(q.id, idx)
+                            : setAnswers(prev => ({ ...prev, [q.id]: idx }))
+                        }
                       />
                       <span>{opt}</span>
                     </label>

@@ -13,6 +13,7 @@ export async function PATCH(req: Request, ctx: Params) {
     text: body.text,
     options: body.options ?? undefined,
     correctIndex: body.correctIndex ?? undefined,
+    correctIndices: body.correctIndices ?? undefined,
   });
   if ("error" in res) {
     const statusMap: Record<string, number> = {
