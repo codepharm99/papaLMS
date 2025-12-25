@@ -89,6 +89,36 @@ npm run dev
 
 ---
 
+## Структура проекта (где что находится)
+
+Корень репозитория:
+- `README.md` — общий обзор и запуск
+- `BACKEND.md` — подробности по бэкенду и API
+- `.env` — переменные окружения (локально)
+- `package.json` — скрипты и зависимости
+
+Папка `src/`:
+- `src/app/` — Next.js App Router: страницы, лэйауты и API‑роуты
+  - `src/app/api/**/route.ts` — серверные эндпоинты
+  - `src/app/**/page.tsx` — страницы (UI)
+  - `src/app/layout.tsx` — корневой layout
+- `src/components/` — общие UI‑компоненты
+- `src/lib/` — серверные утилиты и доступ к данным
+  - `src/lib/auth.ts` — cookie‑авторизация
+  - `src/lib/mockdb.ts` — слой доступа к Prisma
+  - `src/lib/ollama.ts` — конфиг генерации через Ollama
+
+Папка `prisma/`:
+- `prisma/schema.prisma` — схема БД
+- `prisma/migrations/` — миграции
+- `prisma/seed.cjs` — сиды демо‑данных
+
+Папки ассетов:
+- `public/` — статические файлы (изображения и т.п.)
+- `prompts/` — шаблоны промптов для генерации презентаций
+
+---
+
 ## Основные страницы и модули
 
 - `src/app/page.tsx` — лендинг
