@@ -780,6 +780,18 @@ export type WeeklyScoreRow = {
   examScore?: number | null;
 };
 
+export type TeacherWeeklyScoreRow = {
+  studentId: string;
+  week: number;
+  part: number;
+  lectureScore: number;
+  practiceScore: number;
+  individualWorkScore: number;
+  ratingScore?: number | null;
+  midtermScore?: number | null;
+  examScore?: number | null;
+};
+
 export async function listWeeklyScoresForStudent(studentId: string): Promise<WeeklyScoreRow[]> {
   const rows = await prisma.weeklyScore.findMany({
     where: { studentId },
@@ -800,6 +812,38 @@ export async function listWeeklyScoresForStudent(studentId: string): Promise<Wee
     midtermScore: r.midtermScore,
     examScore: r.examScore,
   }));
+}
+
+export async function listWeeklyScoresForTeacher(
+  teacherId: string,
+  courseId: string,
+  week: number
+): Promise<{ ok: true; items: TeacherWeeklyScoreRow[] } | { error: "FORBIDDEN" | "COURSE_NOT_FOUND" | "INVALID_WEEK" }> {
+  if (teacherId === "") return { error: "FORBIDDEN" };
+  if (!Number.isInteger(week) || week < 1 || week > 14) return { error: "INVALID_WEEK" };
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return { error: "COURSE_NOT_FOUND" };
+  if (course.teacherId !== teacherId) return { error: "FORBIDDEN" };
+
+  const rows = await prisma.weeklyScore.findMany({
+    where: { courseId, week },
+    orderBy: { studentId: "asc" },
+  });
+
+  return {
+    ok: true,
+    items: rows.map(r => ({
+      studentId: r.studentId,
+      week: r.week,
+      part: r.part,
+      lectureScore: r.lectureScore,
+      practiceScore: r.practiceScore,
+      individualWorkScore: r.individualWorkScore,
+      ratingScore: r.ratingScore,
+      midtermScore: r.midtermScore,
+      examScore: r.examScore,
+    })),
+  };
 }
 
 export async function listCourseStudentsForTeacher(
