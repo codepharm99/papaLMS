@@ -1,7 +1,6 @@
 // Client so we can choose the correct target for "Мои курсы" based on role
 "use client";
 
-import type { CSSProperties } from "react";
 import ProfileModule from "@/components/ProfileModule";
 import Link from "next/link";
 import { useCurrentUser } from "@/components/user-context";
@@ -11,21 +10,6 @@ export default function ProfilePage() {
   const { user } = useCurrentUser();
   const { language } = useLanguage();
   const myCoursesHref = user?.role === "TEACHER" ? "/teacher/courses" : "/student/courses";
-  const heroPaint: CSSProperties = {
-    "--module-accent-1": "230 82% 72%",
-    "--module-accent-2": "258 78% 70%",
-    "--module-accent-3": "289 74% 68%",
-  };
-  const bodyPaint: CSSProperties = {
-    "--module-accent-1": "206 82% 78%",
-    "--module-accent-2": "183 76% 74%",
-    "--module-accent-3": "162 72% 70%",
-  };
-  const pagePaint: CSSProperties = {
-    "--aurora-accent-1": "223 92% 66%",
-    "--aurora-accent-2": "260 82% 66%",
-    "--aurora-accent-3": "308 76% 64%",
-  };
   const t = {
     breadcrumbHome: language === "ru" ? "Главная" : "Home",
     breadcrumbProfile: language === "ru" ? "Профиль" : "Profile",
@@ -36,12 +20,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="page-aurora min-h-screen bg-gray-50" style={pagePaint}>
+    <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        <div
-          className="module-illustration rounded-3xl border bg-white/95 p-6 shadow-sm"
-          style={heroPaint}
-        >
+        <div className="rounded-3xl border border-blue-600 bg-white p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <nav className="text-sm text-gray-500" aria-label="Breadcrumb">
@@ -57,10 +38,10 @@ export default function ProfilePage() {
               <p className="mt-1 text-sm text-gray-600">{t.description}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Link href={myCoursesHref} className="inline-flex items-center px-4 py-2 bg-white border rounded-md text-sm text-gray-700 hover:bg-gray-50">
+              <Link href={myCoursesHref} className="inline-flex items-center px-4 py-2 bg-white border border-blue-600 rounded-md text-sm text-blue-600 hover:bg-blue-50">
                 {t.myCourses}
               </Link>
-              <Link href="/" className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">
+              <Link href="/" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
                 {t.toSite}
               </Link>
             </div>
@@ -68,10 +49,7 @@ export default function ProfilePage() {
         </div>
 
         <main>
-          <div
-            className="module-illustration light mt-6 rounded-3xl border bg-white/95 p-4 shadow-sm sm:p-6"
-            style={bodyPaint}
-          >
+          <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-4 sm:p-6">
             <ProfileModule />
           </div>
         </main>

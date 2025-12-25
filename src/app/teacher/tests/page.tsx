@@ -86,7 +86,7 @@ export default function TeacherTestsPage() {
       />
 
       <section
-        className="module-illustration light rounded-xl border bg-white/95 p-4 shadow-sm"
+        className="rounded-xl border bg-white/95 p-4 shadow-sm"
         style={createPaint}
       >
         <h1 className="mb-3 text-lg font-medium">Создать тест</h1>
@@ -106,7 +106,7 @@ export default function TeacherTestsPage() {
       </section>
 
       <section
-        className="module-illustration light rounded-xl border bg-white/95 p-4 shadow-sm"
+        className="rounded-xl border bg-white/95 p-4 shadow-sm"
         style={listPaint}
       >
         <h2 className="mb-3 text-lg font-medium">Прошлые тесты</h2>

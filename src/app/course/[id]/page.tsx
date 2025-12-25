@@ -68,7 +68,7 @@ export default function CoursePage() {
 
       {tab === "overview" && (
         <div
-          className="module-illustration light rounded-2xl border bg-white/95 p-4 text-gray-600 shadow-sm"
+          className="rounded-2xl border bg-white/95 p-4 text-gray-600 shadow-sm"
           style={overviewPaint}
         >
           Здесь будет краткое описание курса и блок объявлений (добавим позже).

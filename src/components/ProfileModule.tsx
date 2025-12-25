@@ -486,24 +486,16 @@ export default function ProfileModule() {
     ),
   };
 
-  const themeBg = "from-sky-800 via-cyan-700 to-emerald-600";
-  const overlayTint = "bg-white/70";
-  const panelBg = "bg-white/85 border-indigo-50 text-gray-900";
-  const cardBg = "bg-white/80 border-indigo-50 text-gray-900";
-  const cardShadow = "shadow-indigo-100/70";
+  const panelBg = "bg-white border border-gray-200 text-gray-900";
+  const cardBg = "bg-white border border-gray-200 text-gray-900";
   const avatarBusy = saving && (avatarFile || (profile?.avatarUrl && !avatarPreview));
   const labelTone = "text-gray-700";
   const subtleTone = "text-gray-500";
-  const linkTone = "text-indigo-700";
+  const linkTone = "text-blue-600";
   const linkSubtle = "text-gray-600";
-  const accentBubble = "bg-indigo-100";
 
   return (
     <div className="relative max-w-4xl mx-auto p-6 md:p-8 text-gray-900">
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(99,102,241,0.14),transparent_35%),radial-gradient(circle_at_85%_10%,rgba(236,72,153,0.12),transparent_35%),radial-gradient(circle_at_20%_90%,rgba(16,185,129,0.12),transparent_30%)] opacity-90" />
-        <div className={`absolute inset-4 rounded-[32px] ${overlayTint} blur-3xl`} />
-      </div>
       {/* Toast container */}
       <div className="fixed right-4 top-4 z-50 flex flex-col gap-3">
         {toasts.map((t) => (
@@ -534,32 +526,27 @@ export default function ProfileModule() {
           </div>
         ))}
       </div>
-      <header className={`relative overflow-hidden mb-6 rounded-2xl border border-white/10 bg-gradient-to-br ${themeBg} text-white shadow-xl shadow-emerald-200/40`}>
-        <div className="absolute inset-0">
-          <div className="absolute -left-10 -top-16 h-40 w-40 rounded-full bg-white/20 blur-3xl" />
-          <div className="absolute right-6 bottom-[-56px] h-44 w-44 rounded-full bg-emerald-200/30 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.26),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(52,211,153,0.2),transparent_30%)]" />
-        </div>
-        <div className="relative p-6 md:p-8 flex flex-col gap-6">
+      <header className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 md:p-8">
+        <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.25em] text-white/70">Профиль</p>
-              <h1 className="text-3xl font-semibold leading-tight">{tr("Мой профиль", "My profile")}</h1>
-              <p className="text-sm opacity-90 max-w-2xl">
+              <p className="text-xs uppercase tracking-[0.25em] text-gray-500">Профиль</p>
+              <h1 className="text-3xl font-semibold leading-tight text-gray-900">{tr("Мой профиль", "My profile")}</h1>
+              <p className="text-sm text-gray-600 max-w-2xl">
                 {tr("Удобное место, где можно обновить свою историю, фото и ссылки на важные проекты.", "A handy place to update your story, photo, and important links.")}
               </p>
-              <div className="flex flex-wrap gap-2 text-xs text-white/80">
-                <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">{tr("Быстрые правки", "Quick edits")}</span>
-                <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">{tr("Важные ссылки", "Important links")}</span>
-                <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">{tr("Сертификаты", "Certificates")}</span>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-blue-600 bg-blue-50 px-3 py-1 text-blue-700">{tr("Быстрые правки", "Quick edits")}</span>
+                <span className="rounded-full border border-blue-600 bg-blue-50 px-3 py-1 text-blue-700">{tr("Важные ссылки", "Important links")}</span>
+                <span className="rounded-full border border-blue-600 bg-blue-50 px-3 py-1 text-blue-700">{tr("Сертификаты", "Certificates")}</span>
               </div>
             </div>
             <div className="flex flex-wrap gap-3 items-center justify-end">
               <button
                 onClick={rollbackLast}
                 disabled={!history.length || saving}
-                className={`rounded-full border px-4 py-2 text-sm font-semibold backdrop-blur transition ${
-                  history.length ? "border-white/40 bg-white/10 hover:bg-white/20" : "border-white/20 bg-white/5 opacity-50"
+                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                  history.length ? "border-blue-600 text-blue-600 hover:bg-blue-50" : "border-gray-300 text-gray-400 opacity-60"
                 }`}
               >
                 Откатить
@@ -567,15 +554,15 @@ export default function ProfileModule() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="rounded-2xl border border-white/30 bg-white/10 backdrop-blur px-4 py-3 shadow-lg shadow-indigo-900/20 w-full sm:w-auto">
-              <div className="text-[11px] uppercase tracking-wide text-white/70">{tr("Заполненность", "Completion")}</div>
+            <div className="rounded-2xl border border-blue-600 bg-blue-50 px-4 py-3 w-full sm:w-auto">
+              <div className="text-[11px] uppercase tracking-wide text-blue-700">{tr("Заполненность", "Completion")}</div>
               <div className="mt-2 flex items-center gap-3">
-                <div className="text-3xl font-semibold">{completionInfo.percent}%</div>
-                <div className="h-2 w-full sm:w-28 rounded-full bg-white/20 overflow-hidden">
-                  <div className="h-full bg-white transition-[width] duration-500 ease-out" style={{ width: `${completionInfo.percent}%` }} />
+                <div className="text-3xl font-semibold text-gray-900">{completionInfo.percent}%</div>
+                <div className="h-2 w-full sm:w-28 rounded-full bg-white overflow-hidden border border-blue-600">
+                  <div className="h-full accent-blue transition-[width] duration-500 ease-out" style={{ width: `${completionInfo.percent}%` }} />
                 </div>
               </div>
-              <div className="mt-2 text-xs text-white/80">
+              <div className="mt-2 text-xs text-gray-600">
                 {completionInfo.missing.length > 0
                   ? tr(`Добавьте: ${completionInfo.missing.join(", ")}`, `Add: ${completionInfo.missing.join(", ")}`)
                   : tr("Отлично, всё заполнено!", "Great, everything is filled!")}
@@ -584,25 +571,25 @@ export default function ProfileModule() {
                 {(completionInfo.missing.length ? completionInfo.missing : ["Готово"]).map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/90"
+                    className="rounded-full border border-blue-600 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700"
                   >
                     {tag}
                   </span>
                 ))}
               </div>
             </div>
-            <div className="rounded-2xl border border-white/20 bg-black/10 px-4 py-3 backdrop-blur-sm w-full sm:w-auto">
-              <div className="text-sm font-semibold">{tr("Документы", "Documents")}</div>
-              <div className="text-2xl font-semibold leading-tight">{normalizedSettings.certificates.length}</div>
-              <div className="text-xs text-white/70">{tr("сертификатов в профиле", "certificates in profile")}</div>
+            <div className="rounded-2xl border border-green-600 bg-green-50 px-4 py-3 w-full sm:w-auto">
+              <div className="text-sm font-semibold text-green-700">{tr("Документы", "Documents")}</div>
+              <div className="text-2xl font-semibold leading-tight text-gray-900">{normalizedSettings.certificates.length}</div>
+              <div className="text-xs text-gray-600">{tr("сертификатов в профиле", "certificates in profile")}</div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {achievements.map((a) => (
               <span
                 key={a.label}
-                className={`rounded-full px-3 py-1 text-xs font-semibold backdrop-blur ${
-                  a.ok ? "bg-white/25 text-white" : "bg-black/20 text-white/70"
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  a.ok ? "accent-green text-white" : "bg-blue-100 text-blue-700 border border-blue-600"
                 }`}
               >
                 {a.label}
@@ -614,11 +601,10 @@ export default function ProfileModule() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Profile Card */}
-        <div className={`relative col-span-1 rounded-2xl border ${cardBg} p-6 shadow-xl ${cardShadow} backdrop-blur transition-transform hover:-translate-y-0.5`}>
-          <div className={`pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full ${accentBubble} blur-2xl`} />
+        <div className={`relative col-span-1 rounded-2xl ${cardBg} p-6`}>
           <div className="flex flex-col items-center">
             {profile?.avatarUrl ? (
-              <div className="w-32 h-32 rounded-full overflow-hidden mb-4 ring-4 ring-indigo-50 shadow-lg shadow-indigo-200/60 relative">
+              <div className="w-32 h-32 rounded-full overflow-hidden mb-4 ring-2 ring-blue-600 relative">
                 <img src={profile.avatarUrl} alt="avatar" className={`w-full h-full object-cover ${avatarBusy ? "opacity-70" : ""}`} />
                 {avatarBusy && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white text-sm">
@@ -627,7 +613,7 @@ export default function ProfileModule() {
                 )}
               </div>
             ) : (
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-100 via-white to-purple-100 flex items-center justify-center text-2xl font-semibold text-indigo-800 mb-4 shadow-inner relative">
+              <div className="w-32 h-32 rounded-full border border-blue-600 bg-blue-50 flex items-center justify-center text-2xl font-semibold text-blue-700 mb-4 relative">
                 {initials(profile?.fullName ?? user?.name ?? '')}
                 {avatarBusy && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white text-sm">
@@ -646,7 +632,7 @@ export default function ProfileModule() {
             <div className="mt-6 w-full flex gap-2">
               <button
                 onClick={() => setEditMode(!editMode)}
-                className="w-full px-4 py-2 rounded-md bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow-md shadow-indigo-200/60 hover:brightness-110 transition"
+                className="w-full px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition"
               >
                 {editMode ? tr("Отмена", "Cancel") : tr("Редактировать профиль", "Edit profile")}
               </button>
@@ -655,7 +641,7 @@ export default function ProfileModule() {
                   type="button"
                   onClick={rollbackLast}
                   disabled={saving}
-                  className="px-3 py-2 rounded-md border border-indigo-200 text-sm text-indigo-700 hover:bg-indigo-50 transition"
+                  className="px-3 py-2 rounded-md border border-blue-600 text-sm text-blue-600 hover:bg-blue-50 transition"
                 >
                   ↺
                 </button>
@@ -665,10 +651,10 @@ export default function ProfileModule() {
         </div>
 
         {/* Edit / Details Panel */}
-        <div className={`col-span-1 md:col-span-2 ${panelBg} backdrop-blur rounded-2xl p-6 md:p-7 shadow-lg ${cardShadow}`}>
+        <div className={`col-span-1 md:col-span-2 ${panelBg} rounded-2xl p-6 md:p-7`}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">{tr("Данные профиля", "Profile data")}</h2>
-            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">{tr("Обновлено сейчас", "Updated now")}</span>
+            <span className="rounded-full border border-blue-600 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{tr("Обновлено сейчас", "Updated now")}</span>
           </div>
 
           {!editMode && (
@@ -690,7 +676,7 @@ export default function ProfileModule() {
                     normalizedSettings.certificates.map((c, idx) => (
                       <div
                         key={idx}
-                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${linkTone} hover:bg-indigo-50`}
+                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${linkTone} hover:bg-blue-50`}
                       >
                         <button
                           type="button"
@@ -701,7 +687,7 @@ export default function ProfileModule() {
                         </button>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span>PDF</span>
-                          <a href={c.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+                          <a href={c.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
                             ↗
                           </a>
                         </div>
@@ -725,10 +711,10 @@ export default function ProfileModule() {
                           href={v}
                           target="_blank"
                           rel="noreferrer"
-                          className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${linkTone} hover:bg-indigo-50`}
+                          className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${linkTone} hover:bg-blue-50`}
                         >
                           <span className="flex items-center gap-2 capitalize">
-                            <span className="text-indigo-600">{linkIcons[k] ?? linkIcons.other}</span>
+                            <span className="text-blue-600">{linkIcons[k] ?? linkIcons.other}</span>
                             {k}
                           </span>
                           <span className={`truncate pl-2 ${linkSubtle}`}>{readableLink(v)}</span>
@@ -741,7 +727,7 @@ export default function ProfileModule() {
               </div>
 
               <div className="pt-4">
-                <button onClick={() => setEditMode(true)} className="px-4 py-2 rounded-md bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 transition">
+                <button onClick={() => setEditMode(true)} className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition">
                   {tr("Редактировать", "Edit")}
                 </button>
               </div>

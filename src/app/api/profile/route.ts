@@ -21,7 +21,12 @@ export async function GET(req: Request) {
     // получаем профиль, если есть — иначе null
     let profile = null;
     try {
-      profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+      const profileModel = (prisma as any).profile;
+      if (profileModel?.findUnique) {
+        profile = await profileModel.findUnique({ where: { userId: user.id } });
+      } else {
+        console.warn("Profile lookup skipped (profile model missing on Prisma client)");
+      }
     } catch (e) {
       // If the Profile table doesn't exist (dev/migration drift), don't fail the whole request.
       // Log and continue with profile = null so UI can render and offer to create a profile.
@@ -41,7 +46,11 @@ export async function PATCH(req: Request) {
   try {
     const user = await currentUser();
     if (!user) throw new Error("Unauthenticated");
-    const existing = await prisma.profile.findUnique({ where: { userId: user.id } });
+    const profileModel = (prisma as any).profile;
+    if (!profileModel?.findUnique || !profileModel?.upsert) {
+      return NextResponse.json({ error: "Profile table not available" }, { status: 501 });
+    }
+    const existing = await profileModel.findUnique({ where: { userId: user.id } });
     const contentType = req.headers.get("content-type") ?? "";
     const updates: any = {};
 
@@ -260,7 +269,7 @@ export async function PATCH(req: Request) {
     // debug: log the object we pass to Prisma upsert
     console.log('PROFILE UPSERT createObj:', createObj, 'updates:', updates);
     // upsert: если профиля нет — создаём, иначе обновляем
-    const profile = await prisma.profile.upsert({
+    const profile = await profileModel.upsert({
       where: { userId: user.id },
       create: createObj,
       update: updates,

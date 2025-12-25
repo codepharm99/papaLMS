@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AuroraBackground from "@/components/AuroraBackground";
 import Nav from "@/components/Nav";
 import { UserProvider } from "@/components/user-context";
 import { currentUser } from "@/lib/auth";
@@ -38,8 +37,7 @@ export default async function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-screen relative bg-gray-50 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
-        <AuroraBackground />
+      <body className="min-h-screen relative bg-gray-50 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 simple-ui">
         <LanguageProvider>
           <UserProvider initialUser={initialUser}>
             <div className="relative z-10 flex min-h-screen flex-col">

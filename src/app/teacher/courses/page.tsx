@@ -104,7 +104,7 @@ export default function TeacherCoursesPage() {
   return (
     <section className="page-aurora space-y-5 rounded-3xl p-1" style={pagePaint}>
       <div
-        className="module-illustration rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 px-6 py-5 text-white shadow-lg"
+        className="rounded-3xl bg-gradient-to-br from-indigo-800 via-purple-800 to-fuchsia-700 px-6 py-5 text-white shadow-lg"
         style={heroPaint}
       >
         <p className="text-xs uppercase tracking-[0.25em] text-white/70">{tr("Панель преподавателя", "Teacher panel")}</p>
@@ -174,7 +174,7 @@ export default function TeacherCoursesPage() {
           {items.map((course, idx) => (
             <div
               key={course.id}
-              className="module-illustration light rounded-2xl border bg-white/95 p-4 text-gray-900 shadow-sm"
+              className="rounded-2xl border bg-white/95 p-4 text-gray-900 shadow-sm"
               style={cardPaints[idx % cardPaints.length]}
             >
               <div className="text-xs text-gray-500">{course.code} · {course.orgTag}</div>

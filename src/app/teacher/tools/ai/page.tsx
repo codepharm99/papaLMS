@@ -93,7 +93,7 @@ export default function TeacherAiPage() {
   return (
     <div className="page-aurora space-y-5 rounded-3xl p-1" style={heroPaint}>
       <div
-        className="module-illustration rounded-3xl bg-gradient-to-br from-indigo-700 via-purple-700 to-fuchsia-600 px-6 py-5 text-white shadow-xl"
+        className="rounded-3xl bg-gradient-to-br from-indigo-700 via-purple-700 to-fuchsia-600 px-6 py-5 text-white shadow-xl"
         style={heroPaint}
       >
         <p className="text-xs uppercase tracking-[0.28em] text-white/70">Инструменты преподавателя</p>

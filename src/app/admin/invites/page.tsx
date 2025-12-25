@@ -79,7 +79,7 @@ export default function AdminInvitesPage() {
   return (
     <section className="page-aurora space-y-5 rounded-3xl p-1" style={pagePaint}>
       <div
-        className="module-illustration rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-800 to-indigo-600 px-6 py-5 text-white shadow-xl"
+        className="rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-800 to-indigo-600 px-6 py-5 text-white shadow-xl"
         style={heroPaint}
       >
         <p className="text-xs uppercase tracking-[0.3em] text-white/70">{tr("Администрирование", "Administration")}</p>
@@ -105,7 +105,7 @@ export default function AdminInvitesPage() {
 
       {invites && invites.length > 0 && (
         <div
-          className="module-illustration light overflow-hidden rounded-2xl border bg-white/95 shadow-sm"
+          className="overflow-hidden rounded-2xl border bg-white/95 shadow-sm"
           style={tablePaint}
         >
           <table className="min-w-full text-sm">

@@ -25,7 +25,7 @@ export default function StudentCoursesPage() {
   return (
     <section className="page-aurora space-y-5 rounded-3xl p-1" style={pagePaint}>
       <div
-        className="module-illustration rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-500 px-6 py-5 text-white shadow-lg"
+        className="rounded-3xl bg-gradient-to-br from-indigo-800 via-purple-800 to-fuchsia-700 px-6 py-5 text-white shadow-lg"
         style={heroPaint}
       >
         <p className="text-xs uppercase tracking-[0.25em] text-white/70">{tr("Лента студента", "Student feed")}</p>
@@ -35,7 +35,7 @@ export default function StudentCoursesPage() {
         </p>
       </div>
       <div
-        className="module-illustration light rounded-2xl border border-dashed bg-white/95 p-6 shadow-sm"
+        className="rounded-2xl border border-dashed bg-white/95 p-6 shadow-sm"
         style={emptyPaint}
       >
         <p className="font-medium text-gray-900">{tr("Пока нет записанных курсов.", "No enrolled courses yet.")}</p>

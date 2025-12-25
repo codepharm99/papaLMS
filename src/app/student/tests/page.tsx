@@ -54,7 +54,7 @@ export default function StudentTestsPage() {
   return (
     <div className="page-aurora space-y-5 rounded-3xl p-1" style={pagePaint}>
       <div
-        className="module-illustration rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 px-6 py-5 text-white shadow-lg"
+        className="rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 px-6 py-5 text-white shadow-lg"
         style={heroPaint}
       >
         <p className="text-xs uppercase tracking-[0.3em] text-white/70">{tr("Тестирование", "Testing")}</p>
@@ -73,7 +73,7 @@ export default function StudentTestsPage() {
         </div>
       ) : (
         <ul
-          className="module-illustration light divide-y rounded-2xl border bg-white/95 shadow-sm"
+          className="divide-y rounded-2xl border bg-white/95 shadow-sm"
           style={listPaint}
         >
           {items.map(a => (

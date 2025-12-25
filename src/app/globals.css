@@ -76,6 +76,16 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #1a1f44;
   --sidebar-ring: #5e54ff;
+  --ui-accent-blue: #2563eb;
+  --ui-accent-blue-strong: #1d4ed8;
+  --ui-accent-green: #16a34a;
+  --ui-accent-green-strong: #15803d;
+  --ui-ink: #111111;
+  --ui-paper: #ffffff;
+  --ui-border: rgba(17, 17, 17, 0.2);
+  --ui-muted: rgba(17, 17, 17, 0.65);
+  --ui-soft-blue: rgba(37, 99, 235, 0.08);
+  --ui-soft-green: rgba(22, 163, 74, 0.08);
 }
 
 .dark {
@@ -174,6 +184,228 @@ html.login-pattern body {
   color: #111827;
 }
 
+body.login-full {
+  background: transparent !important;
+}
+
+body.login-full header {
+  display: none;
+}
+
+body.login-full main {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body.simple-ui {
+  background: var(--ui-paper) !important;
+  color: var(--ui-ink) !important;
+}
+
+body.simple-ui main {
+  background: var(--ui-paper);
+  border-radius: 16px;
+}
+
+body.login-full.simple-ui main {
+  border: 0;
+  border-radius: 0;
+}
+
+body.simple-ui * {
+  background-image: none !important;
+  text-shadow: none !important;
+}
+
+body.simple-ui [class*="shadow"],
+body.simple-ui [class*="ring-"] {
+  box-shadow: none !important;
+}
+
+body.simple-ui [class*="backdrop-blur"],
+body.simple-ui [class*="blur-"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+
+body.simple-ui [class*="bg-gradient"],
+body.simple-ui [class*="from-"],
+body.simple-ui [class*="via-"],
+body.simple-ui [class*="to-"] {
+  background-image: none !important;
+}
+
+body.simple-ui [class*="bg-white"],
+body.simple-ui [class*="bg-gray-"],
+body.simple-ui [class*="bg-slate-"],
+body.simple-ui [class*="bg-neutral-"],
+body.simple-ui [class*="bg-zinc-"],
+body.simple-ui [class*="bg-stone-"] {
+  background-color: var(--ui-paper) !important;
+}
+
+body.simple-ui [class*="bg-black"] {
+  background-color: var(--ui-ink) !important;
+  color: #ffffff !important;
+  border-color: var(--ui-ink) !important;
+}
+
+body.simple-ui [class*="bg-indigo-"],
+body.simple-ui [class*="bg-blue-"],
+body.simple-ui [class*="bg-red-"] {
+  background-color: var(--ui-soft-blue) !important;
+}
+
+body.simple-ui [class*="bg-green-"],
+body.simple-ui [class*="bg-emerald-"] {
+  background-color: var(--ui-soft-green) !important;
+}
+
+body.simple-ui [class*="border"] {
+  border-color: var(--ui-border) !important;
+}
+
+body.simple-ui [class*="border-blue-"],
+body.simple-ui [class*="border-indigo-"] {
+  border-color: var(--ui-accent-blue) !important;
+}
+
+body.simple-ui [class*="border-green-"],
+body.simple-ui [class*="border-emerald-"] {
+  border-color: var(--ui-accent-green) !important;
+}
+
+body.simple-ui [class*="text-gray-"],
+body.simple-ui [class*="text-slate-"],
+body.simple-ui [class*="text-neutral-"],
+body.simple-ui [class*="text-zinc-"],
+body.simple-ui [class*="text-stone-"],
+body.simple-ui [class*="text-white"] {
+  color: var(--ui-ink) !important;
+}
+
+body.simple-ui [class*="text-gray-4"],
+body.simple-ui [class*="text-gray-5"],
+body.simple-ui [class*="text-gray-6"] {
+  color: var(--ui-muted) !important;
+}
+
+body.simple-ui [class*="text-blue-"],
+body.simple-ui [class*="text-indigo-"] {
+  color: var(--ui-accent-blue) !important;
+}
+
+body.simple-ui [class*="text-green-"],
+body.simple-ui [class*="text-emerald-"] {
+  color: var(--ui-accent-green) !important;
+}
+
+body.simple-ui [class*="text-red-"] {
+  color: var(--ui-accent-blue) !important;
+}
+
+body.simple-ui a {
+  color: var(--ui-accent-blue) !important;
+}
+
+body.simple-ui input,
+body.simple-ui textarea,
+body.simple-ui select {
+  background-color: var(--ui-paper) !important;
+  color: var(--ui-ink) !important;
+  border-color: var(--ui-border) !important;
+}
+
+body.simple-ui button.bg-gray-900,
+body.simple-ui a.bg-gray-900,
+body.simple-ui [role="button"].bg-gray-900,
+body.simple-ui button[class*="bg-indigo-"],
+body.simple-ui button[class*="bg-blue-"],
+body.simple-ui button[class*="bg-red-"],
+body.simple-ui a[class*="bg-indigo-"],
+body.simple-ui a[class*="bg-blue-"],
+body.simple-ui a[class*="bg-red-"],
+body.simple-ui [role="button"][class*="bg-indigo-"],
+body.simple-ui [role="button"][class*="bg-blue-"],
+body.simple-ui [role="button"][class*="bg-red-"] {
+  background-color: var(--ui-accent-blue) !important;
+  color: #ffffff !important;
+  border-color: var(--ui-accent-blue) !important;
+}
+
+body.simple-ui button[class*="bg-green-"],
+body.simple-ui button[class*="bg-emerald-"],
+body.simple-ui a[class*="bg-green-"],
+body.simple-ui a[class*="bg-emerald-"],
+body.simple-ui [role="button"][class*="bg-green-"],
+body.simple-ui [role="button"][class*="bg-emerald-"] {
+  background-color: var(--ui-accent-green) !important;
+  color: #ffffff !important;
+  border-color: var(--ui-accent-green) !important;
+}
+
+body.simple-ui .bg-gray-900 [class*="text-white"],
+body.simple-ui button[class*="bg-indigo-"] [class*="text-white"],
+body.simple-ui button[class*="bg-blue-"] [class*="text-white"],
+body.simple-ui button[class*="bg-red-"] [class*="text-white"],
+body.simple-ui button[class*="bg-green-"] [class*="text-white"],
+body.simple-ui button[class*="bg-emerald-"] [class*="text-white"],
+body.simple-ui a[class*="bg-indigo-"] [class*="text-white"],
+body.simple-ui a[class*="bg-blue-"] [class*="text-white"],
+body.simple-ui a[class*="bg-red-"] [class*="text-white"],
+body.simple-ui a[class*="bg-green-"] [class*="text-white"],
+body.simple-ui a[class*="bg-emerald-"] [class*="text-white"] {
+  color: #ffffff !important;
+}
+
+body.simple-ui button.bg-gray-900:hover,
+body.simple-ui a.bg-gray-900:hover,
+body.simple-ui [role="button"].bg-gray-900:hover,
+body.simple-ui button[class*="bg-indigo-"]:hover,
+body.simple-ui button[class*="bg-blue-"]:hover,
+body.simple-ui button[class*="bg-red-"]:hover,
+body.simple-ui a[class*="bg-indigo-"]:hover,
+body.simple-ui a[class*="bg-blue-"]:hover,
+body.simple-ui a[class*="bg-red-"]:hover,
+body.simple-ui [role="button"][class*="bg-indigo-"]:hover,
+body.simple-ui [role="button"][class*="bg-blue-"]:hover,
+body.simple-ui [role="button"][class*="bg-red-"]:hover {
+  background-color: var(--ui-accent-blue-strong) !important;
+}
+
+body.simple-ui button[class*="bg-green-"]:hover,
+body.simple-ui button[class*="bg-emerald-"]:hover,
+body.simple-ui a[class*="bg-green-"]:hover,
+body.simple-ui a[class*="bg-emerald-"]:hover,
+body.simple-ui [role="button"][class*="bg-green-"]:hover,
+body.simple-ui [role="button"][class*="bg-emerald-"]:hover {
+  background-color: var(--ui-accent-green-strong) !important;
+}
+
+body.simple-ui .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--ui-border) !important;
+}
+
+body.simple-ui .page-aurora::before,
+body.simple-ui .page-aurora::after {
+  display: none !important;
+}
+
+body.simple-ui .accent-blue {
+  background-color: var(--ui-accent-blue) !important;
+  color: #ffffff !important;
+  border-color: var(--ui-accent-blue) !important;
+}
+
+body.simple-ui .accent-green {
+  background-color: var(--ui-accent-green) !important;
+  color: #ffffff !important;
+  border-color: var(--ui-accent-green) !important;
+}
+
 /* Respect users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html.login-pattern {
@@ -197,102 +429,11 @@ html.login-pattern body {
   100% { transform: translate(-16%, 10%) scale(1.05) rotate(-50deg); }
 }
 
-/* Animated module backgrounds */
-.module-illustration {
-  --module-accent-1: 222 89% 66%;
-  --module-accent-2: 261 86% 68%;
-  --module-accent-3: 312 84% 64%;
-  --module-ink-opacity: 0.32;
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-}
-
-.module-illustration::before,
-.module-illustration::after {
-  content: "";
-  position: absolute;
-  inset: -18%;
-  pointer-events: none;
-  z-index: 0;
-  transform: translateZ(0);
-  will-change: transform;
-}
-
-.module-illustration::before {
-  background:
-    radial-gradient(46% 52% at 18% 28%, hsl(var(--module-accent-1) / 0.55), transparent 58%),
-    radial-gradient(42% 48% at 80% 18%, hsl(var(--module-accent-2) / 0.5), transparent 58%),
-    radial-gradient(60% 62% at 55% 78%, hsl(var(--module-accent-3) / 0.45), transparent 64%);
-  filter: blur(4px);
-  animation: moduleGlow 18s ease-in-out infinite alternate;
-  opacity: 0.9;
-}
-
-.module-illustration::after {
-  inset: -10%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 240' fill='none' stroke='%23ffffff' stroke-width='24' stroke-linecap='round' opacity='0.6'%3E%3Cpath d='M-20 80c80-70 140 90 240 10s120 70 220-20'/%3E%3Cpath d='M-40 200c90 40 150-90 250-10s150-50 230 30'/%3E%3C/svg%3E");
-  background-size: 480px 280px;
-  background-repeat: repeat;
-  mix-blend-mode: screen;
-  opacity: var(--module-ink-opacity);
-  animation: moduleFloat 24s ease-in-out infinite alternate-reverse;
-}
-
-.module-illustration.light {
-  --module-ink-opacity: 0.18;
-}
-
-.module-illustration.light::after {
-  filter: invert(1) hue-rotate(180deg) saturate(70%);
-  mix-blend-mode: multiply;
-}
-
-.module-illustration > * {
-  position: relative;
-  z-index: 1;
-}
-
-@keyframes moduleGlow {
-  0% { transform: translate(-6%, -4%) scale(1.02) rotate(0deg); }
-  50% { transform: translate(4%, 6%) scale(1.08) rotate(6deg); }
-  100% { transform: translate(10%, -6%) scale(1.03) rotate(12deg); }
-}
-
-@keyframes moduleFloat {
-  0% { transform: translate(0%, 0%) rotate(0deg) scale(1); }
-  50% { transform: translate(6%, -4%) rotate(-4deg) scale(1.02); }
-  100% { transform: translate(-5%, 6%) rotate(3deg) scale(1.04); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .module-illustration::before,
-  .module-illustration::after {
-    animation: none !important;
-    background-attachment: scroll;
-  }
-}
-
-/* Performance-friendly overrides: simplify heavy animated surfaces */
-.module-illustration {
-  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.82));
-  box-shadow: none;
-}
-.module-illustration::before,
-.module-illustration::after {
-  content: none !important;
-  display: none !important;
-  animation: none !important;
-}
-
-.page-aurora {
-  background: none;
-}
+/* Performance: keep heavy visuals static to reduce lag */
 .page-aurora::before,
 .page-aurora::after {
-  content: none !important;
-  display: none !important;
-  animation: none !important;
+  animation: none;
+  will-change: auto;
 }
 
 /* Full-page soft aurora background */
@@ -319,7 +460,7 @@ html.login-pattern body {
     radial-gradient(38% 36% at 18% 22%, hsl(var(--aurora-accent-1, 223 92% 66%) / 0.28), transparent 60%),
     radial-gradient(46% 40% at 78% 18%, hsl(var(--aurora-accent-2, 260 82% 66%) / 0.32), transparent 58%),
     radial-gradient(50% 46% at 52% 70%, hsl(var(--aurora-accent-3, 308 76% 64%) / 0.25), transparent 62%);
-  filter: blur(18px);
+  filter: blur(10px);
   animation: auroraGlow 26s ease-in-out infinite alternate;
 }
 
@@ -338,8 +479,8 @@ html.login-pattern body {
       hsl(var(--aurora-accent-3, 308 76% 64%) / 0.08) 80px
     );
   background-size: 120% 120%, 220% 220%;
-  mix-blend-mode: screen;
-  opacity: 0.8;
+  mix-blend-mode: normal;
+  opacity: 0.45;
   animation: auroraWaves 32s ease-in-out infinite alternate;
 }
 

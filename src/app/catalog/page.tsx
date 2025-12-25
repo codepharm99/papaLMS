@@ -19,11 +19,6 @@ export default function CatalogPage() {
     "--module-accent-2": "236 82% 70%",
     "--module-accent-3": "268 78% 68%",
   };
-  const cardsPaint: CSSProperties = {
-    "--module-accent-1": "194 82% 74%",
-    "--module-accent-2": "221 80% 70%",
-    "--module-accent-3": "248 76% 70%",
-  };
   const pagePaint: CSSProperties = {
     "--aurora-accent-1": "223 92% 66%",
     "--aurora-accent-2": "260 82% 66%",
@@ -57,7 +52,7 @@ export default function CatalogPage() {
   return (
     <section className="page-aurora space-y-4 rounded-3xl p-1" style={pagePaint}>
       <div
-        className="module-illustration rounded-3xl border bg-white/95 p-5 shadow-sm"
+        className="rounded-3xl border bg-white/95 p-5 shadow-sm"
         style={heroPaint}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -68,7 +63,7 @@ export default function CatalogPage() {
               {tr("Подберите курс по названию или коду — предложения обновляются динамически.", "Find a course by title or code — the list updates dynamically.")}
             </p>
           </div>
-          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+          <span className="rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold text-white">
             {items ? `${items.length} ${tr("курсов", "courses")}` : tr("Загрузка", "Loading")}
           </span>
         </div>
@@ -90,10 +85,7 @@ export default function CatalogPage() {
       )}
 
       {!loading && items && items.length > 0 && (
-        <div
-          className="module-illustration light grid grid-cols-1 gap-4 rounded-3xl border bg-white/95 p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-3"
-          style={cardsPaint}
-        >
+        <div className="grid grid-cols-1 gap-4 rounded-3xl border p-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((c, idx) => (
             <CourseCard
               key={c.id}

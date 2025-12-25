@@ -438,7 +438,7 @@ export default function PresentationsTool() {
         ]}
       />
       <div
-        className="module-illustration overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-600 p-6 text-white shadow-xl shadow-indigo-200/50"
+        className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-600 p-6 text-white shadow-xl shadow-indigo-200/50"
         style={heroPaint}
       >
         <div className="text-xs uppercase tracking-[0.3em] text-white/70">{tr("Инструменты преподавателя", "Teacher tools")}</div>
