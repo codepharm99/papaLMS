@@ -199,6 +199,69 @@ body.login-full main {
   padding: 0;
 }
 
+.mambet-float-1,
+.mambet-float-2,
+.mambet-float-3,
+.mambet-float-4 {
+  will-change: transform;
+}
+
+.mambet-float-1 {
+  animation: mambetFloat1 6.2s ease-in-out infinite;
+}
+
+.mambet-float-2 {
+  animation: mambetFloat2 5.4s ease-in-out infinite;
+}
+
+.mambet-float-3 {
+  animation: mambetFloat3 6.8s ease-in-out infinite;
+}
+
+.mambet-float-4 {
+  animation: mambetFloat4 5.9s ease-in-out infinite;
+}
+
+@keyframes mambetFloat1 {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(3deg) scale(1.04);
+  }
+}
+
+@keyframes mambetFloat2 {
+  0%,
+  100% {
+    transform: translateX(0) rotate(2deg);
+  }
+  45% {
+    transform: translateX(8px) translateY(-6px) rotate(-4deg) scale(1.03);
+  }
+}
+
+@keyframes mambetFloat3 {
+  0%,
+  100% {
+    transform: translateY(0) rotate(1deg);
+  }
+  55% {
+    transform: translateY(12px) rotate(-5deg) scale(0.98);
+  }
+}
+
+@keyframes mambetFloat4 {
+  0%,
+  100% {
+    transform: translateX(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateX(-10px) translateY(-8px) rotate(4deg) scale(1.05);
+  }
+}
+
 body.simple-ui {
   background: var(--ui-paper) !important;
   color: var(--ui-ink) !important;
