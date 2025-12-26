@@ -13,6 +13,11 @@ export async function GET(_: Request, ctx: Params) {
     const statusMap: Record<string, number> = { FORBIDDEN: 403, ASSIGNMENT_NOT_FOUND: 404 };
     return NextResponse.json({ error: res.error }, { status: statusMap[res.error] ?? 400 });
   }
-  return NextResponse.json({ ok: true, assignment: res.assignment, questions: res.questions });
+  return NextResponse.json({
+    ok: true,
+    assignment: res.assignment,
+    questions: res.questions,
+    answers: res.answers ?? null,
+    feedback: res.feedback ?? null,
+  });
 }
-

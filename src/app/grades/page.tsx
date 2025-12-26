@@ -69,7 +69,7 @@ export default function GradesPage() {
         </div>
 
         <div
-          className="module-illustration light overflow-hidden rounded-2xl border bg-white/95 shadow-sm"
+          className="overflow-hidden rounded-2xl border bg-white/95 shadow-sm"
           style={tablePaint}
         >
           <div className="border-b px-4 py-3">
@@ -146,7 +146,7 @@ function StatCard({ title, value }: { title: string; value: string }) {
   };
   return (
     <div
-      className="module-illustration light rounded-xl border bg-white/95 px-4 py-3 shadow-sm"
+      className="rounded-xl border bg-white/95 px-4 py-3 shadow-sm"
       style={paint}
     >
       <div className="text-sm text-gray-500">{title}</div>

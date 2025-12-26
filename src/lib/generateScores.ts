@@ -81,13 +81,15 @@ export function generateScores(params: Params = {}): ScoreEntry[] {
   }
 
   return entries.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
 export type Score = {
   subject: string;
   score: number;
 };
 
 const SUBJECTS = ["math", "english", "history", "science", "it"];
-export function generateScores(name: string): Score[] {
+export function generateStudentScores(name: string): Score[] {
   let seed = 0;
 
   for (let i = 0; i < name.length; i++) {

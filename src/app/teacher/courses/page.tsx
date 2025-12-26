@@ -15,11 +15,13 @@ type TeacherCourse = {
   createdAt: number;
 };
 
+type CSSVars = CSSProperties & Record<`--${string}`, string>;
+
 export default function TeacherCoursesPage() {
   const { user } = useCurrentUser();
   const router = useRouter();
   const { language } = useLanguage();
-  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
+  const tr = useCallback((ru: string, en: string) => (language === "ru" ? ru : en), [language]);
   const [items, setItems] = useState<TeacherCourse[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,17 +30,17 @@ export default function TeacherCoursesPage() {
   const [orgTag, setOrgTag] = useState("IUA");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const heroPaint: CSSProperties = {
+  const heroPaint: CSSVars = {
     "--module-accent-1": "161 77% 62%",
     "--module-accent-2": "186 76% 60%",
     "--module-accent-3": "199 74% 64%",
   };
-  const cardPaints: CSSProperties[] = [
+  const cardPaints: CSSVars[] = [
     { "--module-accent-1": "168 74% 74%", "--module-accent-2": "186 76% 70%", "--module-accent-3": "201 74% 68%" },
     { "--module-accent-1": "204 84% 74%", "--module-accent-2": "225 82% 70%", "--module-accent-3": "245 74% 66%" },
     { "--module-accent-1": "256 78% 76%", "--module-accent-2": "279 74% 72%", "--module-accent-3": "301 70% 70%" },
   ];
-  const pagePaint: CSSProperties = {
+  const pagePaint: CSSVars = {
     "--aurora-accent-1": "223 92% 66%",
     "--aurora-accent-2": "260 82% 66%",
     "--aurora-accent-3": "308 76% 64%",
@@ -63,7 +65,7 @@ export default function TeacherCoursesPage() {
     }
     const data = await res.json();
     setItems(data.items);
-  }, [router]);
+  }, [router, tr]);
 
   useEffect(() => {
     if (user?.role !== "TEACHER") return;
@@ -104,7 +106,7 @@ export default function TeacherCoursesPage() {
   return (
     <section className="page-aurora space-y-5 rounded-3xl p-1" style={pagePaint}>
       <div
-        className="module-illustration rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 px-6 py-5 text-white shadow-lg"
+        className="rounded-3xl bg-gradient-to-br from-indigo-800 via-purple-800 to-fuchsia-700 px-6 py-5 text-white shadow-lg"
         style={heroPaint}
       >
         <p className="text-xs uppercase tracking-[0.25em] text-white/70">{tr("Панель преподавателя", "Teacher panel")}</p>
@@ -174,11 +176,11 @@ export default function TeacherCoursesPage() {
           {items.map((course, idx) => (
             <div
               key={course.id}
-              className="module-illustration light rounded-2xl border bg-white/95 p-4 shadow-sm"
+              className="rounded-2xl border bg-white/95 p-4 text-gray-900 shadow-sm"
               style={cardPaints[idx % cardPaints.length]}
             >
               <div className="text-xs text-gray-500">{course.code} · {course.orgTag}</div>
-              <h3 className="mt-1 text-lg font-semibold">{course.title}</h3>
+              <h3 className="mt-1 text-lg font-semibold text-gray-900">{course.title}</h3>
               {course.description && <p className="mt-2 text-sm text-gray-600">{course.description}</p>}
               <div className="mt-3 text-xs text-gray-400">{tr("Создан:", "Created:")} {new Date(course.createdAt).toLocaleString()}</div>
             </div>

@@ -7,7 +7,7 @@ export async function POST(req: Request, ctx: Params) {
   const { code } = await ctx.params;
   const body = await req.json().catch(() => ({}));
   const name = String(body.name ?? "");
-  const answers = (body.answers ?? {}) as Record<string, number | string | null>;
+  const answers = (body.answers ?? {}) as Record<string, number | number[] | string | null>;
   const res = await submitGuestAttempt(code, name, answers);
   if ("error" in res) {
     const status = res.error === "NAME_REQUIRED" ? 400 : 404;

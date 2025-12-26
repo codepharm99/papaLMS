@@ -5,6 +5,76 @@ import { currentUser } from "@/lib/auth";
 import { promises as fs } from "fs";
 import path from "path";
 
+type ProfileSettings = {
+  links?: Record<string, string>;
+  certificates?: Array<{ title: string; url: string }>;
+};
+
+type ProfileRecord = {
+  userId: string;
+  avatarUrl?: string | null;
+  settings?: unknown;
+  email?: string | null;
+};
+
+type ProfileUpsertInput = {
+  userId?: string;
+  fullName?: string | null;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  settings?: ProfileSettings;
+  email?: string;
+};
+
+type SettingsMeta = {
+  links?: Record<string, string>;
+  existingCertificates?: Array<{ title: string; url: string }>;
+  newCertificates?: Array<{ title?: string }>;
+};
+
+type ProfileModel = {
+  findUnique?: (args: { where: { userId: string } }) => Promise<ProfileRecord | null>;
+  upsert?: (args: { where: { userId: string }; create: ProfileUpsertInput; update: ProfileUpsertInput }) => Promise<ProfileRecord>;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const readLinks = (settings: unknown): Record<string, string> => {
+  if (!isRecord(settings)) return {};
+  const raw = settings.links;
+  if (!isRecord(raw)) return {};
+  const links: Record<string, string> = {};
+  for (const [key, val] of Object.entries(raw)) {
+    if (typeof val === "string") links[key] = val;
+  }
+  return links;
+};
+
+const readCertificates = (settings: unknown): Array<{ title: string; url: string }> => {
+  if (!isRecord(settings)) return [];
+  const raw = settings.certificates;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) =>
+      isRecord(item) && typeof item.title === "string" && typeof item.url === "string"
+        ? { title: item.title, url: item.url }
+        : null
+    )
+    .filter((item): item is { title: string; url: string } => Boolean(item));
+};
+
+const getUserEmail = (value: unknown) => {
+  if (!isRecord(value)) return "";
+  const email = value.email;
+  return typeof email === "string" ? email : "";
+};
+
+const normalizeEmail = (value: unknown) => {
+  if (typeof value !== "string") return "";
+  return value.trim();
+};
+
 export async function GET(req: Request) {
   try {
     const user = await currentUser();
@@ -21,7 +91,12 @@ export async function GET(req: Request) {
     // получаем профиль, если есть — иначе null
     let profile = null;
     try {
-      profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+      const profileModel = (prisma as unknown as { profile?: ProfileModel }).profile;
+      if (profileModel?.findUnique) {
+        profile = await profileModel.findUnique({ where: { userId: user.id } });
+      } else {
+        console.warn("Profile lookup skipped (profile model missing on Prisma client)");
+      }
     } catch (e) {
       // If the Profile table doesn't exist (dev/migration drift), don't fail the whole request.
       // Log and continue with profile = null so UI can render and offer to create a profile.
@@ -32,8 +107,9 @@ export async function GET(req: Request) {
     // подтянем email из базы (mock `user` может не содержать email)
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     return NextResponse.json({ user: { id: user.id, email: dbUser?.email ?? null }, profile });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? "Unauthenticated" }, { status: 401 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unauthenticated";
+    return NextResponse.json({ error: message }, { status: 401 });
   }
 }
 
@@ -41,59 +117,61 @@ export async function PATCH(req: Request) {
   try {
     const user = await currentUser();
     if (!user) throw new Error("Unauthenticated");
-    const existing = await prisma.profile.findUnique({ where: { userId: user.id } });
+    const profileModel = (prisma as unknown as { profile?: ProfileModel }).profile;
+    if (!profileModel?.findUnique || !profileModel?.upsert) {
+      return NextResponse.json({ error: "Profile table not available" }, { status: 501 });
+    }
+    const existing = await profileModel.findUnique({ where: { userId: user.id } });
     const contentType = req.headers.get("content-type") ?? "";
-    const updates: any = {};
+    const updates: ProfileUpsertInput = {};
 
     // Handle multipart/form-data (file upload) or JSON
     if (contentType.includes("multipart/form-data")) {
       // Use Request.formData() (Node/Next supports this in route handlers)
       const form = await req.formData();
       const fullName = form.get("fullName");
+      const email = normalizeEmail(form.get("email"));
       const bio = form.get("bio");
       const avatar = form.get("avatar") as File | null;
 
       if (typeof fullName === "string") updates.fullName = fullName;
+      if (email) updates.email = email;
       if (typeof bio === "string") updates.bio = bio;
 
       // links + certificates metadata (titles + existing list)
       const settingsMetaRaw = form.get("settingsMeta");
-      const metaDefaults = {
-        links: (existing?.settings as any)?.links ?? {},
-        existingCertificates: Array.isArray((existing as any)?.settings?.certificates) ? (existing as any).settings.certificates : [],
+      const metaDefaults: SettingsMeta = {
+        links: readLinks(existing?.settings),
+        existingCertificates: readCertificates(existing?.settings),
         newCertificates: [],
       };
-      let settingsMeta = metaDefaults as {
-        links?: any;
-        existingCertificates?: any;
-        newCertificates?: Array<{ title?: string }>;
-      };
+      let settingsMeta: SettingsMeta = metaDefaults;
       if (typeof settingsMetaRaw === "string") {
         try {
-          const parsed = JSON.parse(settingsMetaRaw);
+          const parsed = JSON.parse(settingsMetaRaw) as SettingsMeta;
           settingsMeta = { ...metaDefaults, ...parsed };
-        } catch (e) {
+        } catch {
           settingsMeta = metaDefaults;
         }
       }
 
       const certificateFiles = form
         .getAll("certificateFiles")
-        .filter((f): f is File => f instanceof File && typeof (f as any).arrayBuffer === "function");
+        .filter((f): f is File => f instanceof File && typeof f.arrayBuffer === "function");
       const certificateTitles: string[] = Array.isArray(settingsMeta?.newCertificates)
         ? settingsMeta.newCertificates.map((c) => (typeof c?.title === "string" ? c.title : "Сертификат"))
         : [];
 
       const certificates: Array<{ title: string; url: string }> = Array.isArray(settingsMeta.existingCertificates)
         ? settingsMeta.existingCertificates
-            .map((c: any) => (c && typeof c.title === "string" && typeof c.url === "string" ? { title: c.title, url: c.url } : null))
-            .filter(Boolean)
+            .map((c) => (c && typeof c.title === "string" && typeof c.url === "string" ? { title: c.title, url: c.url } : null))
+            .filter((c): c is { title: string; url: string } => Boolean(c))
         : [];
 
-      if (avatar && typeof (avatar as any).arrayBuffer === "function") {
-        const arrayBuffer = await (avatar as any).arrayBuffer();
+      if (avatar && typeof avatar.arrayBuffer === "function") {
+        const arrayBuffer = await avatar.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        const mime = (avatar as any).type;
+        const mime = avatar.type;
         const allowed = ["image/png", "image/jpeg"];
         if (!allowed.includes(mime)) {
           throw new Error("Unsupported image type");
@@ -180,18 +258,22 @@ export async function PATCH(req: Request) {
         certificates,
       };
     } else {
-      const payload = await req.json();
-      if (typeof payload.fullName === "string") updates.fullName = payload.fullName;
-      if (typeof payload.bio === "string") updates.bio = payload.bio;
-      if (typeof payload.avatarUrl === "string") updates.avatarUrl = payload.avatarUrl;
-      if (payload.avatarUrl === null) updates.avatarUrl = null;
-      if (payload.settings !== undefined) {
-        const links = payload.settings?.links ?? (existing?.settings as any)?.links ?? {};
-        const certificates = Array.isArray(payload.settings?.certificates)
-          ? payload.settings.certificates.filter((c: any) => c && typeof c.title === "string" && typeof c.url === "string")
-          : Array.isArray((existing as any)?.settings?.certificates)
-            ? (existing as any).settings.certificates
-            : [];
+      const payload = (await req.json().catch(() => ({}))) as unknown;
+      const payloadObj = isRecord(payload) ? payload : {};
+      if (typeof payloadObj.fullName === "string") updates.fullName = payloadObj.fullName;
+      const email = normalizeEmail(payloadObj.email);
+      if (email) updates.email = email;
+      if (typeof payloadObj.bio === "string") updates.bio = payloadObj.bio;
+      if (typeof payloadObj.avatarUrl === "string") updates.avatarUrl = payloadObj.avatarUrl;
+      if (payloadObj.avatarUrl === null) updates.avatarUrl = null;
+      if ("settings" in payloadObj) {
+        const payloadSettings = isRecord(payloadObj.settings) ? payloadObj.settings : {};
+        const hasLinks = "links" in payloadSettings;
+        const hasCertificates = "certificates" in payloadSettings;
+        const links = hasLinks ? readLinks(payloadSettings) : readLinks(existing?.settings);
+        const certificates = hasCertificates
+          ? readCertificates(payloadSettings)
+          : readCertificates(existing?.settings);
         updates.settings = { links, certificates };
       }
     }
@@ -217,7 +299,7 @@ export async function PATCH(req: Request) {
               try {
                 const u = new URL(existing.avatarUrl);
                 key = u.pathname.replace(/^\//, '');
-              } catch (e) {
+              } catch {
                 key = null;
               }
             }
@@ -234,42 +316,51 @@ export async function PATCH(req: Request) {
           try {
             const localPath = path.join(process.cwd(), 'public', existing.avatarUrl.replace(/^\//, ''));
             await fs.unlink(localPath).catch(() => {});
-          } catch (e) {
+          } catch {
             // ignore
           }
         }
-      } catch (e) {
-        console.warn('Error while removing previous avatar', e);
+      } catch (err) {
+        console.warn('Error while removing previous avatar', err);
       }
     }
 
     // ensure we have an email for the profile create (schema requires it)
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-    const createObj: any = { userId: user.id, ...updates };
+    if (updates.email && updates.email !== dbUser?.email) {
+      try {
+        await prisma.user.update({ where: { id: user.id }, data: { email: updates.email } });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Email update failed";
+        return NextResponse.json({ error: message }, { status: 400 });
+      }
+    }
+    const createObj: ProfileUpsertInput & { userId: string } = { userId: user.id, ...updates };
     // If creating a new profile and the account has no email, return a clear error
     if (!existing) {
-      const resolvedEmail = dbUser?.email ?? (user as any)?.email ?? "";
+      const resolvedEmail = updates.email ?? dbUser?.email ?? getUserEmail(user);
       if (!resolvedEmail) {
         return NextResponse.json({ error: "Account must have an email before creating a profile" }, { status: 400 });
       }
       createObj.email = resolvedEmail;
     } else {
-      if (!createObj.email) createObj.email = dbUser?.email ?? (user as any)?.email ?? "";
+      if (!createObj.email) createObj.email = updates.email ?? dbUser?.email ?? getUserEmail(user);
     }
 
     // debug: log the object we pass to Prisma upsert
     console.log('PROFILE UPSERT createObj:', createObj, 'updates:', updates);
     // upsert: если профиля нет — создаём, иначе обновляем
-    const profile = await prisma.profile.upsert({
+    const profile = await profileModel.upsert({
       where: { userId: user.id },
       create: createObj,
       update: updates,
     });
 
     return NextResponse.json({ profile });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Bad request";
     // 401 для неавторизованных, 400/500 для прочих ошибок
-    const status = err?.message === "Unauthenticated" ? 401 : 400;
-    return NextResponse.json({ error: err?.message ?? "Bad request" }, { status });
+    const status = message === "Unauthenticated" ? 401 : 400;
+    return NextResponse.json({ error: message }, { status });
   }
 }

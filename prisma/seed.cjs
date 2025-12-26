@@ -182,7 +182,6 @@ async function main() {
   await upsertProfile({ userId: teacher.id, fullName: teacher.name, bio: "Преподаватель курса", email: teacher.email });
   await upsertProfile({ userId: student.id, fullName: student.name, bio: "Студент курса", email: student.email });
 
-  const courses = await Promise.all([
   const baseCourses = await Promise.all([
     upsertCourse({
       id: "c1",
@@ -647,7 +646,7 @@ async function main() {
   await prisma.teacherInvite.upsert({
     where: { code: "TEACH-2025" },
     update: {},
-    create: { id: "ti1", code: "TEACH-2025", createdById: admin.id },
+    create: { id: "ti1", code: "TEACH-2025", iin: "990101123456", createdById: admin.id },
   });
 
   console.log("✅ Сиды готовы");

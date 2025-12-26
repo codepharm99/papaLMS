@@ -10,12 +10,16 @@ import { useLanguage } from "@/components/language-context";
 type SlideDraft = {
   id: string;
   heading: string;
+  text?: string;
   details?: string;
   imageDataUrl?: string;
   imageAuthorName?: string;
   imageAuthorUrl?: string;
 };
 type Presentation = { id: string; title: string; slides: SlideDraft[]; createdAt: number };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
 const makeId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -42,9 +46,7 @@ export default function PresentationsTool() {
   };
 
   const [presentationTitle, setPresentationTitle] = useState(tr("Новая презентация", "New presentation"));
-  const [slides, setSlides] = useState<SlideDraft[]>([{ id: makeId(), text: "" }]);
-  const [presentationTitle, setPresentationTitle] = useState("Новая презентация");
-  const [slides, setSlides] = useState<SlideDraft[]>([{ id: makeId(), heading: "", details: "" }]);
+  const [slides, setSlides] = useState<SlideDraft[]>([{ id: makeId(), heading: "", text: "", details: "" }]);
   const [aiTopic, setAiTopic] = useState("");
   const [aiSlidesCount, setAiSlidesCount] = useState(6);
   const [aiLoading, setAiLoading] = useState(false);
@@ -63,13 +65,18 @@ export default function PresentationsTool() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const liveSlide = liveSlides[liveIndex] || null;
   const liveHasImage = Boolean(liveSlide?.imageDataUrl);
-  const pickHeading = (s: SlideDraft | any) =>
-    typeof s?.heading === "string" && s.heading.trim()
-      ? s.heading.trim()
-      : typeof s?.text === "string"
-        ? s.text.trim()
-        : "";
-  const pickDetails = (s: SlideDraft | any) => (typeof s?.details === "string" ? s.details.trim() : "");
+  const pickHeading = (s: unknown) => {
+    if (!isRecord(s)) return "";
+    const heading = s.heading;
+    if (typeof heading === "string" && heading.trim()) return heading.trim();
+    const text = s.text;
+    return typeof text === "string" ? text.trim() : "";
+  };
+  const pickDetails = (s: unknown) => {
+    if (!isRecord(s)) return "";
+    const details = s.details;
+    return typeof details === "string" ? details.trim() : "";
+  };
   const liveHasText = Boolean(pickHeading(liveSlide) || pickDetails(liveSlide));
   const liveHeading = pickHeading(liveSlide);
   const liveDetails = pickDetails(liveSlide);
@@ -77,6 +84,10 @@ export default function PresentationsTool() {
 
   const updateSlideHeading = (id: string, heading: string) => {
     setSlides(prev => prev.map(s => (s.id === id ? { ...s, heading } : s)));
+  };
+
+  const updateSlideText = (id: string, text: string) => {
+    setSlides(prev => prev.map(s => (s.id === id ? { ...s, text } : s)));
   };
 
   const updateSlideDetails = (id: string, details: string) => {
@@ -93,24 +104,18 @@ export default function PresentationsTool() {
     }
   };
 
-  const addSlide = () => setSlides(prev => [...prev, { id: makeId(), heading: "", details: "" }]);
+  const addSlide = () => setSlides(prev => [...prev, { id: makeId(), heading: "", text: "", details: "" }]);
 
   const removeSlide = (id: string) => {
     setSlides(prev => {
-      if (prev.length === 1) return [{ id: makeId(), heading: "", details: "" }];
+      if (prev.length === 1) return [{ id: makeId(), heading: "", text: "", details: "" }];
       return prev.filter(s => s.id !== id);
     });
   };
 
   const resetPresentationDraft = () => {
     setPresentationTitle(tr("Новая презентация", "New presentation"));
-    setSlides([{ id: makeId(), text: "" }]);
-  };
-
-  const savePresentation = () => {
-    const safeTitle = presentationTitle.trim() || tr("Без названия", "Untitled");
-    setPresentationTitle("Новая презентация");
-    setSlides([{ id: makeId(), heading: "", details: "" }]);
+    setSlides([{ id: makeId(), heading: "", text: "", details: "" }]);
   };
 
   const generateWithAI = async () => {
@@ -256,21 +261,27 @@ export default function PresentationsTool() {
         throw new Error(typeof data?.error === "string" ? data.error : "Не удалось загрузить презентации");
       }
       const items: Presentation[] = Array.isArray(data?.items)
-        ? data.items.map((p: any) => ({
-            id: String(p.id),
-            title: typeof p.title === "string" ? p.title : "Без названия",
-            createdAt: Number(p.createdAt) || Date.now(),
-            slides: Array.isArray(p.slides)
-              ? p.slides.map((s: any) => ({
-                  id: makeId(),
-                  heading: pickHeading(s),
-                  details: pickDetails(s),
-                  imageDataUrl: typeof s?.imageDataUrl === "string" ? s.imageDataUrl : undefined,
-                  imageAuthorName: typeof s?.imageAuthorName === "string" ? s.imageAuthorName : undefined,
-                  imageAuthorUrl: typeof s?.imageAuthorUrl === "string" ? s.imageAuthorUrl : undefined,
-                }))
-              : [],
-          }))
+        ? data.items.map((p: unknown) => {
+            const obj = isRecord(p) ? p : {};
+            const slidesRaw = Array.isArray(obj.slides) ? obj.slides : [];
+            const slides = slidesRaw.map((s) => {
+              const slideObj = isRecord(s) ? s : {};
+              return {
+                id: makeId(),
+                heading: pickHeading(slideObj),
+                details: pickDetails(slideObj),
+                imageDataUrl: typeof slideObj.imageDataUrl === "string" ? slideObj.imageDataUrl : undefined,
+                imageAuthorName: typeof slideObj.imageAuthorName === "string" ? slideObj.imageAuthorName : undefined,
+                imageAuthorUrl: typeof slideObj.imageAuthorUrl === "string" ? slideObj.imageAuthorUrl : undefined,
+              };
+            });
+            return {
+              id: String(obj.id ?? ""),
+              title: typeof obj.title === "string" ? obj.title : "Без названия",
+              createdAt: Number(obj.createdAt) || Date.now(),
+              slides,
+            };
+          })
         : [];
       setPresentations(items);
     } catch (e: unknown) {
@@ -296,7 +307,6 @@ export default function PresentationsTool() {
       .filter(s => s.heading || s.details || s.imageDataUrl);
     if (preparedSlides.length === 0) {
       alert(tr("Добавьте хотя бы один слайд с текстом или изображением", "Add at least one slide with text or image"));
-      alert("Добавьте хотя бы один слайд с заголовком, текстом или изображением");
       return;
     }
     try {
@@ -311,18 +321,21 @@ export default function PresentationsTool() {
       }
       const item = data?.item;
       const created: Presentation = {
-        id: String(item?.id || makeId()),
-        title: typeof item?.title === "string" ? item.title : safeTitle,
-        createdAt: Number(item?.createdAt) || Date.now(),
-        slides: Array.isArray(item?.slides)
-          ? item.slides.map((s: any) => ({
-              id: makeId(),
-              heading: pickHeading(s),
-              details: pickDetails(s),
-              imageDataUrl: typeof s?.imageDataUrl === "string" ? s.imageDataUrl : undefined,
-              imageAuthorName: typeof s?.imageAuthorName === "string" ? s.imageAuthorName : undefined,
-              imageAuthorUrl: typeof s?.imageAuthorUrl === "string" ? s.imageAuthorUrl : undefined,
-            }))
+        id: String(isRecord(item) ? item.id ?? makeId() : makeId()),
+        title: isRecord(item) && typeof item.title === "string" ? item.title : safeTitle,
+        createdAt: isRecord(item) ? Number(item.createdAt) || Date.now() : Date.now(),
+        slides: isRecord(item) && Array.isArray(item.slides)
+          ? item.slides.map((s) => {
+              const slideObj = isRecord(s) ? s : {};
+              return {
+                id: makeId(),
+                heading: pickHeading(slideObj),
+                details: pickDetails(slideObj),
+                imageDataUrl: typeof slideObj.imageDataUrl === "string" ? slideObj.imageDataUrl : undefined,
+                imageAuthorName: typeof slideObj.imageAuthorName === "string" ? slideObj.imageAuthorName : undefined,
+                imageAuthorUrl: typeof slideObj.imageAuthorUrl === "string" ? slideObj.imageAuthorUrl : undefined,
+              };
+            })
           : preparedSlides.map(s => ({ ...s, id: makeId() })),
       };
       setPresentations(prev => [created, ...prev]);
@@ -442,18 +455,13 @@ export default function PresentationsTool() {
         ]}
       />
       <div
-        className="module-illustration overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-600 p-6 text-white shadow-xl shadow-indigo-200/50"
+        className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-700 via-violet-700 to-fuchsia-600 p-6 text-white shadow-xl shadow-indigo-200/50"
         style={heroPaint}
       >
         <div className="text-xs uppercase tracking-[0.3em] text-white/70">{tr("Инструменты преподавателя", "Teacher tools")}</div>
         <h1 className="mt-2 text-2xl font-bold">{tr("Генератор презентаций", "Presentation generator")}</h1>
         <p className="text-sm text-white/85">
           {tr("Черновики хранятся только в этом браузере. Для показа нажмите «Показать студентам» — откроется полноэкранный режим без всплывающих окон.", "Drafts live only in this browser. Use “Present to students” for fullscreen without pop-ups.")}
-      <div className="space-y-1">
-        <div className="text-xs uppercase tracking-wide text-gray-500">Инструменты преподавателя</div>
-        <h1 className="text-2xl font-semibold">Генератор презентаций</h1>
-        <p className="text-sm text-gray-600">
-          Черновики сохраняются на сервере и привязаны к учётке преподавателя. Для показа нажмите «Показать студентам» — откроется полноэкранный режим без всплывающих окон.
         </p>
       </div>
 
@@ -462,7 +470,7 @@ export default function PresentationsTool() {
           <div className="space-y-1">
             <div className="text-xs uppercase tracking-wide text-gray-500">ИИ на сервере Ollama</div>
             <div className="text-lg font-semibold">Сгенерировать черновик презентации</div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-black">
               Укажите тему или запрос, и мы заменим текущий черновик слайдами с сервера ИИ. После генерации можно редактировать текст и добавлять изображения.
             </p>
           </div>
@@ -573,13 +581,7 @@ export default function PresentationsTool() {
               )}
 
               <label className="block text-sm font-medium text-gray-700">
-                {tr("Текст для слайда", "Slide text")}
-                <textarea
-                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                  placeholder={tr("Краткий тезис, подписи к фото или список", "Short bullet, captions, or a list")}
-                  value={slide.text}
-                  onChange={(e) => updateSlideText(slide.id, e.target.value)}
-                Заголовок
+                {tr("Заголовок", "Heading")}
                 <input
                   className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
                   placeholder="Коротко: о чём слайд"
@@ -589,6 +591,16 @@ export default function PresentationsTool() {
               </label>
 
               <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  {tr("Текст для слайда", "Slide text")}
+                  <textarea
+                    className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                    placeholder={tr("Краткий тезис, подписи к фото или список", "Short bullet, captions, or a list")}
+                    value={slide.text || ""}
+                    onChange={(e) => updateSlideText(slide.id, e.target.value)}
+                    rows={3}
+                  />
+                </label>
                 <label className="block text-sm font-medium text-gray-700">
                   Подробности
                   <textarea
@@ -646,10 +658,6 @@ export default function PresentationsTool() {
         </div>
       </div>
 
-      {presentations.length > 0 && (
-        <div className="rounded-2xl border bg-white p-4 space-y-2 shadow-sm">
-          <div className="text-sm font-semibold">{tr("Черновики презентаций", "Presentation drafts")}</div>
-          <div className="text-xs text-gray-500">{tr("Локально в браузере (исчезнут после перезагрузки).", "Stored locally in this browser (lost after reload).")}</div>
       <div className="rounded-2xl border bg-white p-4 space-y-2 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
@@ -660,7 +668,7 @@ export default function PresentationsTool() {
         </div>
         {savedError && <div className="text-xs text-red-600">{savedError}</div>}
         {presentations.length === 0 && !savedLoading ? (
-          <div className="text-sm text-gray-600">Пока нет сохранённых презентаций.</div>
+          <div className="text-sm text-black">Пока нет сохранённых презентаций.</div>
         ) : (
           <ul className="space-y-2">
             {presentations.map(p => (
@@ -727,7 +735,7 @@ export default function PresentationsTool() {
                 <div className="text-xl font-semibold">{livePresentation.title}</div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-black">
                   {liveIndex + 1} / {liveSlides.length}
                 </span>
                 <button

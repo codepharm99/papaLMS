@@ -1,139 +1,84 @@
-# papaLMS — LMS на Next.js 16 + Prisma (PostgreSQL)
+# papaLMS — учебная LMS на Next.js 16 + Prisma
 
-Учебный проект LMS: каталог курсов → страница курса → материалы → тестирование. Стек: Next.js 16 (App Router, Turbopack), TypeScript, Tailwind, Prisma (PostgreSQL). Роли: STUDENT / TEACHER / ADMIN. Авторизация через cookie. Поддержаны курсы, материалы, приглашения преподавателей и тестирование с публикацией публичной ссылки/QR и гостевыми попытками.
+Учебный проект LMS с ролями STUDENT / TEACHER / ADMIN. Основной поток: каталог → запись на курс → материалы → тесты (назначенные и публичные) → оценки и аналитика. Проект использует Next.js 16 (App Router, Turbopack), TypeScript, Tailwind CSS 4 и Prisma + PostgreSQL. Авторизация — через httpOnly cookie с id пользователя.
 
 ---
 
-## ⚙️ Требования
+## Возможности
+
+- Каталог курсов с поиском по названию/коду/тегу
+- Запись/отписка студентов на курс
+- Материалы курса (добавление преподавателем)
+- Тесты: создание, вопросы, назначения студентам, публикация по ссылке/QR
+- Публичные тесты для гостей (без аккаунта)
+- Оценки по неделям (лекции/практика/инд.работа/рейтинг/экзамен)
+- Профили пользователей
+- Презентации преподавателя + генерация слайдов через Ollama
+- Админ-инвайты для регистрации преподавателей
+
+---
+
+## Требования
 
 - Node.js 18+
-- npm/pnpm/bun
-- PostgreSQL (обычный или Prisma Accelerate URL)
+- npm (или pnpm/bun — по желанию)
+- PostgreSQL
+- Опционально: сервер Ollama и ключ Pexels (для генерации презентаций)
 
 ---
 
-## 🚀 Быстрый старт
+## Быстрый старт (локально)
 
 1) Переменные окружения:
-```
-cp .env .env.local   # если нужно
-# Установите DATABASE_URL
+
+```bash
+cp .env .env.local
+# Обновите DATABASE_URL под свою БД
 ```
 
-2) Установите зависимости и синхронизируйте БД:
+Минимально:
+
+```env
+DATABASE_URL="postgresql://USER@localhost:5432/lms"
 ```
+
+2) Установка зависимостей:
+
+```bash
 npm i
-npx prisma db push --accept-data-loss   # синхронизирует схему, генерирует клиента
-npm run seed                            # создаст тестовые данные (один раз)
 ```
 
-3) Запуск dev-сервера:
+3) Подготовка базы данных и сидов:
+
+```bash
+npm run db:setup
 ```
-npm run dev                             # теперь не пересоздаёт/не пересеивает БД на каждый запуск
+
+4) Запуск dev-сервера:
+
+```bash
+npm run dev
 # http://localhost:3000
 ```
 
-Демо-логины после seed:
-- student1 / 1111 — STUDENT
-- teacher1 / 1111 — TEACHER
-- admin1 / 1111 — ADMIN (выдаёт инвайты для регистрации преподавателей)
+Важно:
+- `npm run dev` запускает только Next.js. Миграции/сиды не выполняются автоматически.
+- При изменении схемы используйте `npx prisma migrate dev --name ...` и затем `npm run seed`, если нужны новые демо-данные.
 
 ---
 
-## 🧱 Технологии
+## Демо-логины после сидов
 
-- Next.js 16 (App Router, Turbopack)
-- TypeScript
-- Tailwind CSS 4
-- Prisma ORM + PostgreSQL
-- bcrypt для паролей
+- `student1` / `1111` — STUDENT
+- `teacher1` / `1111` — TEACHER
+- `admin1` / `1111` — ADMIN (выдает инвайты преподавателям)
 
 ---
 
-## 🤖 ИИ генерация презентаций (Ollama)
+## Скрипты
 
-- В инструменте «Презентации» появилась кнопка «Сгенерировать слайды» — она запрашивает черновик у Ollama и заполняет редактор.
-- Нужен доступ к серверу Ollama (по умолчанию `http://100.92.41.89:11434`) с моделью `ministral-3:3b`. При другом сервере/модели переопределите переменные окружения.
-- Переменные окружения (сервер):
-  - `OLLAMA_BASE_URL` — адрес сервера Ollama, например `http://10.0.0.5:11434` (по умолчанию `http://100.92.41.89:11434`).
-  - `OLLAMA_MODEL` — модель для генерации, по умолчанию `ministral-3:3b`.
-  - `PEXELS_API_KEY` — ключ для подстановки картинок из Pexels (опционально).
-- Промпт для черновика презентации: `prompts/presentation.md` (Markdown), обязателен. Можно указать свой путь через `PRESENTATION_PROMPT_PATH`. Плейсхолдеры `{{topic}}` и `{{slides}}`.
-- Промпт для детализации слайда по кнопке «Сгенерировать подробности»: `prompts/presentation-detail.md` (Markdown). Путь можно переопределить `PRESENTATION_DETAIL_PROMPT_PATH`. Плейсхолдеры `{{topic}}`, `{{heading}}`, `{{rules}}`.
-- Правила генерации текста вынесены отдельно: `prompts/presentation-text-rules.md` (можно поменять через `PRESENTATION_DETAIL_RULES_PATH`). Содержимое вставляется в `{{rules}}`; по умолчанию: текст на английском, без списков/нумерации, связный и по теме.
-- В редакторе слайда есть кнопка «Сгенерировать подробности» — она заполняет поле текста для конкретного слайда, оставляя заголовок неизменным.
-- При использовании Pexels в слайды подставляется атрибуция автора/ссылки, как рекомендует Pexels API. Возможен лимит по ключу (429). Поиск идёт по заголовку + теме презентации (результаты могут меняться).
-- Сохранённые презентации хранятся на сервере и доступны только преподавателю, который их создал (`/api/teacher/presentations` GET/POST, DELETE `/api/teacher/presentations/:id`). После изменения схемы не забудьте применить миграцию Prisma.
-- Ответ ИИ заменяет текущий черновик, его можно доработать вручную и добавить изображения перед показом студентам.
-
----
-
-## 🗂️ Основные файлы и страницы
-
-- `src/app/layout.tsx` — корневой layout, user-context
-- `src/app/login/page.tsx` — вход/регистрация
-- `src/app/catalog/page.tsx` — каталог курсов
-- `src/app/course/[id]/page.tsx` — страница курса, вкладка материалов
-- `src/components/Materials.tsx` — список/добавление материалов (для учителя курса)
-- `src/app/teacher/tools/page.tsx` — инструментальная панель преподавателя
-- **Тестирование (teacher)**:
-  - `src/app/teacher/tests/page.tsx` — список прошлых тестов, создание нового
-  - `src/app/teacher/tests/[id]/edit/page.tsx` — редактор: добавление вопросов, назначение студенту, публикация публичной ссылки и QR; после публикации вопросы менять нельзя
-  - `src/app/teacher/tools/marks/page.tsx` — преподаватель выставляет баллы по неделям для студентов своих курсов
-- **Тестирование (student)**:
-  - `src/app/student/tests/page.tsx` — список назначенных тестов
-  - `src/app/student/tests/[aid]/page.tsx` — сдача назначенного теста, сервер считает балл
-  - `src/app/student/marks/page.tsx` — таблица оценок по неделям (лекции/практики/инд.работа/рейтинг/экзамен)
-- **Гостевой тест по ссылке**:
-  - `src/app/tests/[code]/page.tsx` — страница по публичному коду/QR: ввод имени, ответы, вывод результата; попытка сохраняется как гостевая с оценкой
-- Админ:
-  - `src/app/admin/invites/page.tsx` — инвайты для регистрации преподавателей
-  - `src/app/admin/users/page.tsx` — просмотр списков преподавателей и студентов
-
-API (основное):
-- `/api/auth/login|register|me`
-- `/api/courses`, `/api/courses/:id`, `/api/courses/:id/enroll`, `/api/courses/:id/materials`
-- `/api/teacher/courses`, `/api/teacher/students`
-- `/api/admin/teacher-invites`
-- Тесты (teacher): `/api/teacher/tests`, `/api/teacher/tests/:id/questions`, `/api/teacher/tests/:id/publish`
-- Тесты (student): `/api/student/tests`, `/api/student/tests/:aid`, `/api/student/tests/:aid/submit`
-- Публичные тесты: `/api/tests/:code`, `/api/tests/:code/submit`
-
----
-
-## 🗄️ Модель данных (prisma/schema.prisma)
-
-- User (role: STUDENT/TEACHER/ADMIN)
-- Course, Enrollment, Material
-- TeacherInvite (код для регистрации преподавателя)
-- Test: `publicCode?`, `publishedAt?`, вопросы, назначения, гостевые попытки
-- Question: text, options?, correctIndex?
-- TestAssignment: привязка теста к студенту
-- GuestTestAttempt: имя гостя, score/total, ответы, createdAt
-
----
-
-## 🔐 Роли и ключевые потоки
-
-- STUDENT: записываться на курсы, видеть материалы, сдавать назначенные тесты
-- TEACHER: создавать курсы, добавлять материалы, создавать тесты, публиковать их, выдавать публичную ссылку/QR, назначать тест студентам; после публикации теста вопросы изменить нельзя
-- ADMIN: выдаёт инвайты для регистрации преподавателей
-- Гости/студенты по ссылке `/tests/{code}`: вводят имя, проходят тест, получают балл; попытка сохраняется отдельно от пользователей
-
----
-
-## ❗️ Замечания
-
-- При изменении схемы создавайте миграцию `npx prisma migrate dev --name ...` и коммитьте её; `npm run db:deploy` применит её автоматически
-- Для публикации теста: в редакторе нажмите «Опубликовать», используйте выданную ссылку/QR; с опубликованным тестом нельзя добавлять/редактировать/удалять вопросы
-- Если dev-сервер ругается на lock-файл `.next/dev/lock`, остановите предыдущий `next dev`
-
----
-
-## 📜 Скрипты
-
-```
-"dev": "npm run db:setup && next dev",
+```json
+"dev": "next dev",
 "build": "npm run db:deploy && next build",
 "start": "npm run db:deploy && next start",
 "lint": "eslint",
@@ -142,18 +87,182 @@ API (основное):
 "db:setup": "npm run db:deploy && npm run seed"
 ```
 
-`npm run dev` теперь сам прогоняет миграции (`prisma migrate deploy`) и сиды перед запуском, чтобы удалённая БД была в актуальном состоянии.
+---
 
-Добавочные (по желанию):
-```
-"prisma:studio": "prisma studio",
-"prisma:migrate": "prisma migrate dev"
-```
+## Структура проекта (где что находится)
+
+Корень репозитория:
+- `README.md` — общий обзор и запуск
+- `BACKEND.md` — подробности по бэкенду и API
+- `.env` — переменные окружения (локально)
+- `package.json` — скрипты и зависимости
+
+Папка `src/`:
+- `src/app/` — Next.js App Router: страницы, лэйауты и API‑роуты
+  - `src/app/api/**/route.ts` — серверные эндпоинты
+  - `src/app/**/page.tsx` — страницы (UI)
+  - `src/app/layout.tsx` — корневой layout
+- `src/components/` — общие UI‑компоненты
+- `src/lib/` — серверные утилиты и доступ к данным
+  - `src/lib/auth.ts` — cookie‑авторизация
+  - `src/lib/mockdb.ts` — слой доступа к Prisma
+  - `src/lib/ollama.ts` — конфиг генерации через Ollama
+
+Папка `prisma/`:
+- `prisma/schema.prisma` — схема БД
+- `prisma/migrations/` — миграции
+- `prisma/seed.cjs` — сиды демо‑данных
+
+Папки ассетов:
+- `public/` — статические файлы (изображения и т.п.)
+- `prompts/` — шаблоны промптов для генерации презентаций
 
 ---
 
-## 🗺️ Краткий roadmap
+## Основные страницы и модули
 
-- Доработка заданий/сдач, оценок, посещаемости
-- Улучшение валидации/обработки ошибок
-- Нотификации/тосты и улучшенные состояния загрузки
+- `src/app/page.tsx` — лендинг
+- `src/app/login/page.tsx` — вход/регистрация
+- `src/app/catalog/page.tsx` — каталог курсов
+- `src/app/course/[id]/page.tsx` — страница курса и материалы
+- `src/app/teacher/courses/page.tsx` — курсы преподавателя
+- `src/app/teacher/tests/*` — тесты преподавателя, редактор и публикация
+- `src/app/student/courses/page.tsx` — курсы студента
+- `src/app/student/tests/*` — назначенные тесты студента
+- `src/app/tests/[code]/page.tsx` — публичный тест по коду
+- `src/app/teacher/tools/presentations/page.tsx` — редактор презентаций
+- `src/app/admin/*` — админ панель (инвайты, пользователи)
+
+Библиотеки/утилиты:
+- `src/lib/auth.ts` — cookie-авторизация
+- `src/lib/mockdb.ts` — слой доступа к БД (Prisma)
+- `src/lib/ollama.ts` — конфиг для генерации через Ollama
+
+---
+
+## Роли и основные сценарии
+
+**STUDENT**
+- Просматривает каталог и записывается на курсы
+- Получает материалы курса
+- Сдает назначенные тесты
+- Видит оценки по неделям
+
+**TEACHER**
+- Создает курсы и материалы
+- Формирует тесты, назначает студентам
+- Публикует тест для гостей по ссылке/QR
+- Ведет оценки по неделям
+- Создает презентации, может генерировать слайды
+
+**ADMIN**
+- Выдает инвайты для регистрации преподавателей
+- Просматривает списки преподавателей/студентов
+
+---
+
+## API (основные группы)
+
+Auth:
+- `POST /api/auth/login`
+- `POST /api/auth/register`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+
+Courses:
+- `GET /api/courses`
+- `GET /api/courses/:id`
+- `POST /api/courses/:id/enroll`
+- `GET/POST /api/courses/:id/materials`
+
+Student:
+- `GET /api/student/tests`
+- `GET /api/student/tests/:aid`
+- `POST /api/student/tests/:aid/submit`
+- `GET /api/student/weekly-scores`
+
+Teacher:
+- `GET/POST /api/teacher/courses`
+- `GET /api/teacher/courses/:cid/students`
+- `GET/POST /api/teacher/tests`
+- `GET/POST /api/teacher/tests/:id/questions`
+- `PUT/DELETE /api/teacher/tests/:id/questions/:qid`
+- `POST /api/teacher/tests/:id/publish`
+- `GET/POST /api/teacher/tests/:id/assignments`
+- `GET/POST /api/teacher/assignments`
+- `GET/PUT /api/teacher/assignments/:aid`
+- `POST /api/teacher/assignments/:aid/feedback`
+- `GET/POST /api/teacher/weekly-scores`
+- `GET /api/teacher/analytics`
+- `GET /api/teacher/analytics/student`
+- Презентации: `GET/POST /api/teacher/presentations`, `DELETE /api/teacher/presentations/:id`, `POST /api/teacher/presentations/generate`, `POST /api/teacher/presentations/expand`
+
+Admin:
+- `GET/POST /api/admin/teacher-invites`
+- `GET /api/admin/teachers`
+- `GET /api/admin/students`
+
+Public tests:
+- `GET /api/tests/:code`
+- `POST /api/tests/:code/submit`
+
+Дополнительно (служебные/черновые):
+- `/api/attendance`, `/api/grades`, `/api/assignments`, `/api/submissions`, `/api/announcements`, `/api/sessions`
+
+---
+
+## ИИ-презентации (Ollama)
+
+Генератор слайдов доступен в инструменте преподавателя. Он формирует черновик презентации и может добавлять изображения из Pexels.
+
+Переменные окружения:
+- `OLLAMA_BASE_URL` — адрес сервера Ollama (по умолчанию `http://100.92.41.89:11434`)
+- `OLLAMA_MODEL` — модель (по умолчанию `gemma3:12b`)
+- `OLLAMA_TIMEOUT_MS` — таймаут запроса в миллисекундах (по умолчанию `90000`)
+- `OLLAMA_TIMEOUT` — альтернативный таймаут в секундах
+- `PEXELS_API_KEY` — ключ для поиска изображений (опционально)
+
+Промпты:
+- `prompts/presentation.md` — основной шаблон (можно переопределить `PRESENTATION_PROMPT_PATH`)
+- `prompts/presentation-detail.md` — детализация слайда (через `PRESENTATION_DETAIL_PROMPT_PATH`)
+- `prompts/presentation-text-rules.md` — правила текста (через `PRESENTATION_DETAIL_RULES_PATH`)
+
+---
+
+## Модель данных (кратко)
+
+- `User` — роль, логин, имя
+- `Profile` — профиль пользователя
+- `Course` — курс, преподаватель
+- `Enrollment` — запись студента на курс
+- `Material` — материалы курса
+- `WeeklyScore` — оценки по неделям
+- `TeacherInvite` — инвайт-код для регистрации преподавателя
+- `Test` / `Question` — тесты и вопросы
+- `TestAssignment` — назначение теста студенту
+- `GuestTestAttempt` — попытка гостя по публичной ссылке
+- `Presentation` — презентации преподавателя
+
+---
+
+## Заметки по разработке
+
+- Авторизация: httpOnly cookie `token` (id пользователя), хранится на сервере.
+- `src/lib/mockdb.ts` — слой доступа к Prisma (историческое название).
+- После публикации теста редактирование вопросов запрещено.
+
+---
+
+## Troubleshooting
+
+- Ошибка Prisma `P2002` (уникальность) — проверьте сиды/уникальные поля.
+- Тестовые данные не появляются — выполните `npm run seed`.
+- Конфликт dev-lock — завершите предыдущий `next dev`.
+
+---
+
+## Roadmap (наброски)
+
+- Улучшение UX/валидации форм
+- Нотификации и статусы загрузки
+- Расширение аналитики и отчетов

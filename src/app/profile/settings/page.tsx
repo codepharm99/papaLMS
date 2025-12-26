@@ -19,26 +19,34 @@ function getSystemTheme() {
 }
 
 export default function ProfileSettings() {
-  const [theme, setTheme] = useState<string>("auto");
-  const [notifyEmail, setNotifyEmail] = useState(true);
-  const [notifyPush, setNotifyPush] = useState(false);
+  const [theme, setTheme] = useState<string>(() => {
+    if (typeof window === "undefined") return "auto";
+    return localStorage.getItem(THEME_KEY) || "auto";
+  });
+  const [notifyEmail, setNotifyEmail] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const savedNotify = localStorage.getItem(NOTIFY_KEY);
+    if (!savedNotify) return true;
+    try {
+      const parsed = JSON.parse(savedNotify);
+      return Boolean(parsed?.email);
+    } catch {
+      return true;
+    }
+  });
+  const [notifyPush, setNotifyPush] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const savedNotify = localStorage.getItem(NOTIFY_KEY);
+    if (!savedNotify) return false;
+    try {
+      const parsed = JSON.parse(savedNotify);
+      return Boolean(parsed?.push);
+    } catch {
+      return false;
+    }
+  });
   const { language, setLanguage } = useLanguage();
   const t = useMemo(() => translations[language], [language]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(THEME_KEY) || "auto";
-    setTheme(saved);
-    const savedNotify = localStorage.getItem(NOTIFY_KEY);
-    if (savedNotify) {
-      try {
-        const parsed = JSON.parse(savedNotify);
-        setNotifyEmail(Boolean(parsed.email));
-        setNotifyPush(Boolean(parsed.push));
-      } catch (e) {
-        // ignore parse errors
-      }
-    }
-  }, []);
 
   useEffect(() => {
     let applied = theme;
@@ -54,10 +62,6 @@ export default function ProfileSettings() {
   useEffect(() => {
     localStorage.setItem(NOTIFY_KEY, JSON.stringify({ email: notifyEmail, push: notifyPush }));
   }, [notifyEmail, notifyPush]);
-
-  useEffect(() => {
-    // language persistence handled in LanguageProvider
-  }, [language]);
 
   const resetAll = () => {
     setTheme("auto");

@@ -97,6 +97,7 @@ model Material {
 model TeacherInvite {
   id          String   @id @default(cuid())
   code        String   @unique
+  iin         String?
   createdById String
   createdBy   User     @relation("AdminInvites", fields: [createdById], references: [id])
   usedById    String?
@@ -130,9 +131,11 @@ model Question {
   testId       String
   test         Test     @relation(fields: [testId], references: [id])
   text         String
-  // Для простоты: варианты и индекс правильного ответа
+  answerText   String?
+  // Для простоты: варианты и правильные ответы
   options      Json?
   correctIndex Int?
+  correctIndices Json?
   createdAt    DateTime @default(now())
 }
 
@@ -146,6 +149,12 @@ model TestAssignment {
   assignedBy    User     @relation("GivenAssignments", fields: [assignedById], references: [id])
   dueAt         DateTime?
   status        String   @default("ASSIGNED")
+  score         Int?
+  total         Int?
+  completedAt   DateTime?
+  answers       Json?
+  feedback      Json?
+  reviewedAt    DateTime?
   createdAt     DateTime @default(now())
 }
 

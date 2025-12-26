@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/components/language-context";
 
@@ -24,7 +24,7 @@ function decodePayload(raw: string): Payload {
 function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
   const [index, setIndex] = useState(0);
   const { language } = useLanguage();
-  const tr = (ru: string, en: string) => (language === "ru" ? ru : en);
+  const tr = useCallback((ru: string, en: string) => (language === "ru" ? ru : en), [language]);
 
   const { data, error } = useMemo(() => {
     if (!payloadParam) return { data: null, error: tr("Ссылка не содержит данных презентации.", "Link has no presentation data.") };
@@ -209,17 +209,13 @@ function PresentationViewer({ payloadParam }: { payloadParam: string | null }) {
 
 export default function PresentationViewPage() {
   const params = useSearchParams();
-  const [payloadParam, setPayloadParam] = useState<string | null>(null);
-
-  useEffect(() => {
+  const payloadParam = useMemo(() => {
     const fromQuery = params.get("payload");
-    const fromHash = (() => {
-      if (typeof window === "undefined") return null;
-      const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
-      if (!hash) return null;
-      return new URLSearchParams(hash).get("payload");
-    })();
-    setPayloadParam(fromHash || fromQuery);
+    if (typeof window === "undefined") return fromQuery;
+    const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+    if (!hash) return fromQuery;
+    const fromHash = new URLSearchParams(hash).get("payload");
+    return fromHash || fromQuery;
   }, [params]);
 
   return <PresentationViewer key={payloadParam ?? "empty"} payloadParam={payloadParam} />;
