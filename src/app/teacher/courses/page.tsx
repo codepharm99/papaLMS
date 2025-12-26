@@ -15,6 +15,8 @@ type TeacherCourse = {
   createdAt: number;
 };
 
+type CSSVars = CSSProperties & Record<`--${string}`, string>;
+
 export default function TeacherCoursesPage() {
   const { user } = useCurrentUser();
   const router = useRouter();
@@ -28,17 +30,17 @@ export default function TeacherCoursesPage() {
   const [orgTag, setOrgTag] = useState("IUA");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const heroPaint: CSSProperties = {
+  const heroPaint: CSSVars = {
     "--module-accent-1": "161 77% 62%",
     "--module-accent-2": "186 76% 60%",
     "--module-accent-3": "199 74% 64%",
   };
-  const cardPaints: CSSProperties[] = [
+  const cardPaints: CSSVars[] = [
     { "--module-accent-1": "168 74% 74%", "--module-accent-2": "186 76% 70%", "--module-accent-3": "201 74% 68%" },
     { "--module-accent-1": "204 84% 74%", "--module-accent-2": "225 82% 70%", "--module-accent-3": "245 74% 66%" },
     { "--module-accent-1": "256 78% 76%", "--module-accent-2": "279 74% 72%", "--module-accent-3": "301 70% 70%" },
   ];
-  const pagePaint: CSSProperties = {
+  const pagePaint: CSSVars = {
     "--aurora-accent-1": "223 92% 66%",
     "--aurora-accent-2": "260 82% 66%",
     "--aurora-accent-3": "308 76% 64%",
